@@ -9,9 +9,10 @@ interface MediaRowProps {
   title: string;
   items: MediaItem[];
   startIndex?: number;
+  onSelect?: (item: MediaItem) => void;
 }
 
-export function MediaRow({ title, items, startIndex = 0 }: MediaRowProps) {
+export function MediaRow({ title, items, startIndex = 0, onSelect }: MediaRowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -79,7 +80,7 @@ export function MediaRow({ title, items, startIndex = 0 }: MediaRowProps) {
           className="flex gap-3 overflow-x-auto no-scrollbar px-8 pb-4"
         >
           {items.map((item, i) => (
-            <MediaCard key={item.id} item={item} index={startIndex + i} />
+            <MediaCard key={item.id} item={item} index={startIndex + i} onSelect={onSelect} />
           ))}
         </div>
 

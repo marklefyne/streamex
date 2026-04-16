@@ -10,7 +10,7 @@ import { MediaRow } from "@/components/streamex/media-row";
 import { MediaCard } from "@/components/streamex/media-card";
 import { SkeletonRow } from "@/components/streamex/skeleton-card";
 import { SkeletonGrid } from "@/components/streamex/skeleton-card";
-import { VideoPlayer } from "@/components/streamex/video-player";
+import { MovieDetail } from "@/components/streamex/movie-detail";
 
 import {
   heroMedia,
@@ -30,15 +30,16 @@ type ViewType =
   | "toprated"
   | "new"
   | "mylist"
-  | "settings";
+  | "settings"
+  | "detail";
 
 export default function Home() {
   const [activeView, setActiveView] = useState<ViewType>("home");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<MediaItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [playingItem, setPlayingItem] = useState<MediaItem | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchQueryRef = useRef("");
@@ -61,7 +62,7 @@ export default function Home() {
     };
   }, []);
 
-  // Search handler - event-driven (no setState in effects)
+  // Search handler - event-driven
   const handleSearchChange = useCallback((value: string) => {
     searchQueryRef.current = value;
     setSearchQuery(value);
@@ -73,8 +74,6 @@ export default function Home() {
 
     if (value.trim().length > 0) {
       setIsSearching(true);
-
-      // Simulate debounce (400ms) + API delay (600ms)
       searchTimerRef.current = setTimeout(() => {
         const results = searchMedia(searchQueryRef.current);
         setSearchResults(results);
@@ -99,9 +98,28 @@ export default function Home() {
     setActiveView(view as ViewType);
   }, []);
 
-  const handlePlay = useCallback((item: MediaItem) => {
-    setPlayingItem(item);
+  const handleSelectItem = useCallback((item: MediaItem) => {
+    setSelectedItem(item);
+    setActiveView("detail");
   }, []);
+
+  const handleBackFromDetail = useCallback(() => {
+    setSelectedItem(null);
+    setActiveView("home");
+  }, []);
+
+  // Get similar items for the detail page
+  const similarItems = useMemo(() => {
+    if (!selectedItem) return [];
+    return allMedia
+      .filter(
+        (m) =>
+          m.id !== selectedItem.id &&
+          (m.genres.some((g) => selectedItem.genres.includes(g)) ||
+            m.type === selectedItem.type)
+      )
+      .slice(0, 12);
+  }, [selectedItem]);
 
   // Compute category-specific media
   const getFilteredMedia = useCallback(
@@ -146,18 +164,13 @@ export default function Home() {
     []
   );
 
-  // Player overlay
-  if (playingItem) {
-    return <VideoPlayer item={playingItem} onClose={() => setPlayingItem(null)} />;
-  }
-
   const categoryContent = getFilteredMedia(activeView);
 
   return (
     <div className="flex h-screen overflow-hidden bg-black">
       {/* Sidebar */}
       <Sidebar
-        activeView={isInSearchMode ? "search" : activeView}
+        activeView={activeView === "detail" ? "home" : isInSearchMode ? "search" : activeView}
         onViewChange={handleViewChange}
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
@@ -166,6 +179,23 @@ export default function Home() {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto custom-scrollbar">
         <AnimatePresence mode="wait">
+          {/* ============ DETAIL VIEW ============ */}
+          {activeView === "detail" && selectedItem && (
+            <motion.div
+              key={`detail-${selectedItem.id}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <MovieDetail
+                item={selectedItem}
+                similarItems={similarItems}
+                onBack={handleBackFromDetail}
+              />
+            </motion.div>
+          )}
+
           {/* ============ HOME VIEW ============ */}
           {!isInSearchMode && activeView === "home" && (
             <motion.div
@@ -184,12 +214,12 @@ export default function Home() {
                 </div>
               ) : (
                 <>
-                  <HeroShowcase item={heroMedia} />
+                  <HeroShowcase item={heroMedia} onSelect={handleSelectItem} />
 
                   <div className="space-y-2 py-6">
-                    <MediaRow title="Trending Now" items={trendingNow} startIndex={0} />
-                    <MediaRow title="Top Rated" items={topRated} startIndex={10} />
-                    <MediaRow title="New Releases" items={newReleases} startIndex={20} />
+                    <MediaRow title="Trending Now" items={trendingNow} startIndex={0} onSelect={handleSelectItem} />
+                    <MediaRow title="Top Rated" items={topRated} startIndex={10} onSelect={handleSelectItem} />
+                    <MediaRow title="New Releases" items={newReleases} startIndex={20} onSelect={handleSelectItem} />
                   </div>
 
                   <footer className="border-t border-streamex-border px-8 py-6 mt-4">
@@ -244,7 +274,7 @@ export default function Home() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: i * 0.04 }}
                     >
-                      <MediaCard item={item} index={i} />
+                      <MediaCard item={item} index={i} onSelect={handleSelectItem} />
                     </motion.div>
                   ))}
                 </div>
@@ -275,7 +305,7 @@ export default function Home() {
           )}
 
           {/* ============ CATEGORY VIEWS ============ */}
-          {!isInSearchMode && activeView !== "home" && (
+          {!isInSearchMode && activeView !== "home" && activeView !== "detail" && (
             <motion.div
               key={activeView}
               initial={{ opacity: 0 }}
@@ -339,7 +369,12 @@ export default function Home() {
                 </div>
               ) : categoryContent.length > 0 && categoryContent.some((v) => v.items.length > 0) ? (
                 categoryContent.map((section) => (
-                  <MediaRow key={section.title} title={section.title} items={section.items} />
+                  <MediaRow
+                    key={section.title}
+                    title={section.title}
+                    items={section.items}
+                    onSelect={handleSelectItem}
+                  />
                 ))
               ) : (
                 <div className="flex flex-col items-center justify-center py-20 px-8">

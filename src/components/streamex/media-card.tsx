@@ -9,9 +9,10 @@ interface MediaCardProps {
   item: MediaItem;
   index?: number;
   variant?: "default" | "large";
+  onSelect?: (item: MediaItem) => void;
 }
 
-export function MediaCard({ item, index = 0, variant = "default" }: MediaCardProps) {
+export function MediaCard({ item, index = 0, variant = "default", onSelect }: MediaCardProps) {
   const staggerDelay = index * 0.05;
 
   return (
@@ -20,6 +21,7 @@ export function MediaCard({ item, index = 0, variant = "default" }: MediaCardPro
       style={{ animationDelay: `${staggerDelay}s` }}
       whileHover={{ scale: 1.05 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      onClick={() => onSelect?.(item)}
     >
       <div
         className={`relative rounded-lg overflow-hidden ${

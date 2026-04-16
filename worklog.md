@@ -23,4 +23,26 @@ Stage Summary:
 - All animations and transitions implemented using framer-motion
 - Dev server running successfully on port 3000, page loads with HTTP 200
 - ESLint passes with 0 errors and 0 warnings
-- Files created: globals.css, layout.tsx, page.tsx, mock-data.ts, use-debounce.ts, sidebar.tsx, hero-showcase.tsx, media-card.tsx, media-row.tsx, search-input.tsx, skeleton-card.tsx, rating-badge.tsx, poster-image.tsx, video-player.tsx
+---
+Task ID: 2
+Agent: Main Agent
+Task: Integrate dynamic video player with embed provider and server switcher
+
+Work Log:
+- Added real TMDB IDs to all 31 mock data items (using real movie/show IDs for working embeds)
+- Added getEmbedUrl() utility function that builds embed URLs for 6 different providers
+- Added SERVERS constant with 6 embed server options (VidSrc, VidSrc CC, AutoEmbed, MoviesAPI, VidSrc XYZ, Embed.su)
+- Rebuilt VideoPlayer component with real iframe embeds, loading state, server switcher, and season/episode selector for TV shows
+- Created MovieDetail component with cinematic backdrop hero, poster, metadata, action buttons, server quick-select grid, and similar titles section
+- Updated MediaCard, MediaRow, HeroShowcase to accept onSelect callback for navigation
+- Updated page.tsx to handle "detail" view state with MovieDetail, routing back to home
+
+Stage Summary:
+- VideoPlayer now loads real streams via iframe from 6 different embed providers
+- Server Switcher UI allows switching between servers with active indicator and loading animation
+- TV Series support with season/episode selector dropdowns
+- Movie Detail page shows poster, metadata, genres, description, Play/Add/Like/Share buttons
+- Server quick-select grid on detail page for fast server switching
+- Similar titles section shows related content based on shared genres
+- All navigation wired: clicking any card opens detail page, Play Now opens embedded video player
+- ESLint passes clean, HTTP 200 confirmed

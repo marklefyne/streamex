@@ -6,9 +6,10 @@ import type { MediaItem } from "@/lib/mock-data";
 
 interface HeroShowcaseProps {
   item: MediaItem;
+  onSelect?: (item: MediaItem) => void;
 }
 
-export function HeroShowcase({ item }: HeroShowcaseProps) {
+export function HeroShowcase({ item, onSelect }: HeroShowcaseProps) {
   return (
     <div className="relative w-full h-[60vh] min-h-[400px] max-h-[600px] overflow-hidden">
       {/* Background image with blur */}
@@ -117,11 +118,11 @@ export function HeroShowcase({ item }: HeroShowcaseProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
           >
-            <button className="flex items-center gap-2 px-6 py-2.5 bg-streamex-accent hover:bg-streamex-accent-hover text-white rounded-lg font-semibold text-sm transition-colors duration-200 cursor-pointer">
+            <button onClick={() => onSelect?.(item)} className="flex items-center gap-2 px-6 py-2.5 bg-streamex-accent hover:bg-streamex-accent-hover text-white rounded-lg font-semibold text-sm transition-colors duration-200 cursor-pointer">
               <Play size={16} fill="white" />
               Play Now
             </button>
-            <button className="flex items-center gap-2 px-6 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg font-semibold text-sm transition-colors duration-200 cursor-pointer">
+            <button onClick={() => onSelect?.(item)} className="flex items-center gap-2 px-6 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg font-semibold text-sm transition-colors duration-200 cursor-pointer">
               <Info size={16} />
               More Info
             </button>
