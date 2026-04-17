@@ -10,6 +10,7 @@ export interface LiveMediaItem {
   description: string;
   posterImage: string;
   backdropImage: string;
+  numberOfSeasons?: number;
 }
 
 // Legacy mock data interface (backward compat)

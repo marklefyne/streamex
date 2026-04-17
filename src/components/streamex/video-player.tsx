@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Play,
   Star,
   Clock,
   Tv,
@@ -18,6 +17,10 @@ import { getEmbedUrl, SERVERS } from "@/lib/mock-data";
 
 function isLegacyItem(item: CardItem): item is MediaItem {
   return "posterGradient" in item;
+}
+
+function isLiveItem(item: CardItem): item is LiveMediaItem {
+  return "backdropImage" in item;
 }
 
 interface VideoPlayerProps {
@@ -36,12 +39,22 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
 
   const tmdbId = item.tmdb_id;
   // Detect TV shows from multiple possible type values
-  const isTV = item.type === "TV Series" || item.type === "tv" || item.type === "Anime" || item.id.startsWith("tv-");
+  const isTV =
+    item.type === "TV Series" ||
+    item.type === "tv" ||
+    item.type === "Anime" ||
+    item.id.startsWith("tv-");
   const mediaType: "movie" | "tv" = isTV ? "tv" : "movie";
 
   const activeServer = SERVERS[activeServerIndex] || SERVERS[0];
   const embedUrl = getEmbedUrl(tmdbId, mediaType, activeServer.id, season, episode);
-  const seasonsCount = isLegacyItem(item) ? (item.seasons || 1) : 1;
+
+  // Season count: use real TMDB data if available, otherwise default to 10
+  const seasonsCount = isLegacyItem(item)
+    ? item.seasons || 1
+    : isLiveItem(item) && item.numberOfSeasons
+      ? item.numberOfSeasons
+      : 10;
 
   // Auto-try next server on error (cycle through all providers)
   const tryNextServer = useCallback(() => {
@@ -205,15 +218,15 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
           <div className="px-4 sm:px-6 py-3 border-t border-streamex-border">
             <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-2">
-                <label className="text-[11px] font-bold uppercase tracking-widest text-streamex-text-secondary">
+                <label className="text-[11px] font-bold uppercase tracking-widest text-streamex-text-secondary whitespace-nowrap">
                   Season
                 </label>
                 <select
                   value={season}
                   onChange={(e) => handleEpisodeChange(Number(e.target.value), 1)}
-                  className="bg-[#1a1a1a] border border-streamex-border rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-streamex-accent cursor-pointer appearance-none [&>option]:bg-[#1a1a1a] [&>option]:text-white"
+                  className="bg-[#1a1a1a] border border-streamex-border rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-streamex-accent cursor-pointer [&>option]:bg-[#1a1a1a] [&>option]:text-white"
                 >
-                  {Array.from({ length: Math.max(seasonsCount, 10) }, (_, i) => (
+                  {Array.from({ length: seasonsCount }, (_, i) => (
                     <option key={i + 1} value={i + 1}>
                       Season {i + 1}
                     </option>
@@ -221,15 +234,15 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-[11px] font-bold uppercase tracking-widest text-streamex-text-secondary">
+                <label className="text-[11px] font-bold uppercase tracking-widest text-streamex-text-secondary whitespace-nowrap">
                   Episode
                 </label>
                 <select
                   value={episode}
                   onChange={(e) => handleEpisodeChange(season, Number(e.target.value))}
-                  className="bg-[#1a1a1a] border border-streamex-border rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-streamex-accent cursor-pointer appearance-none [&>option]:bg-[#1a1a1a] [&>option]:text-white"
+                  className="bg-[#1a1a1a] border border-streamex-border rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-streamex-accent cursor-pointer [&>option]:bg-[#1a1a1a] [&>option]:text-white"
                 >
-                  {Array.from({ length: 20 }, (_, i) => (
+                  {Array.from({ length: 30 }, (_, i) => (
                     <option key={i + 1} value={i + 1}>
                       Episode {i + 1}
                     </option>
@@ -255,10 +268,10 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
                 {item.runtime}
               </span>
             )}
-            {isLegacyItem(item) && item.seasons && (
+            {isTV && (
               <span className="flex items-center gap-1 text-sm text-streamex-text-secondary">
                 <Tv size={12} />
-                {item.seasons} Season{item.seasons > 1 ? "s" : ""}
+                {seasonsCount} Season{seasonsCount > 1 ? "s" : ""}
               </span>
             )}
             {isTV && (
@@ -266,16 +279,18 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
                 S{String(season).padStart(2, "0")}E{String(episode).padStart(2, "0")}
               </span>
             )}
-            <div className="flex gap-1.5 ml-1">
-              {item.genres.slice(0, 3).map((g) => (
-                <span
-                  key={g}
-                  className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-streamex-text-secondary"
-                >
-                  {g}
-                </span>
-              ))}
-            </div>
+            {item.genres.length > 0 && (
+              <div className="flex gap-1.5 ml-1">
+                {item.genres.slice(0, 3).map((g) => (
+                  <span
+                    key={g}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-streamex-text-secondary"
+                  >
+                    {g}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

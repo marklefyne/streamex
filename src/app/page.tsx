@@ -127,7 +127,24 @@ export default function Home() {
     setActiveView(view as ViewType);
   }, []);
 
-  const handleSelectItem = useCallback((item: CardItem) => {
+  const handleSelectItem = useCallback(async (item: CardItem) => {
+    // For TV shows, fetch details to get real season count
+    const isTV = item.type === "TV Series" || item.type === "tv" || item.id.startsWith("tv-");
+    if (isTV) {
+      try {
+        const res = await fetch(`/api/tmdb/details?tmdb_id=${item.tmdb_id}&type=tv`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.item) {
+            setSelectedItem(data.item as CardItem);
+            setActiveView("detail");
+            return;
+          }
+        }
+      } catch {
+        // Fall back to list data
+      }
+    }
     setSelectedItem(item);
     setActiveView("detail");
   }, []);

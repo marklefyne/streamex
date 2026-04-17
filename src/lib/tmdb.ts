@@ -20,6 +20,7 @@ export interface TMDBMovie {
   original_language: string;
   original_title?: string;
   original_name?: string;
+  number_of_seasons?: number;
 }
 
 export interface TMDBResponse {
@@ -32,6 +33,56 @@ export interface TMDBResponse {
 export interface TMDBGenre {
   id: number;
   name: string;
+}
+
+// Genre name cache - populated on first use
+let genreCache: Map<number, string> | null = null;
+let genreFetchPromise: Promise<Map<number, string>> | null = null;
+
+async function ensureGenreCache(): Promise<Map<number, string>> {
+  if (genreCache) return genreCache;
+  if (genreFetchPromise) return genreFetchPromise;
+
+  genreFetchPromise = (async () => {
+    try {
+      const [movieGenres, tvGenres] = await Promise.all([
+        tmdbFetch<{ genres: TMDBGenre[] }>("/genre/movie/list"),
+        tmdbFetch<{ genres: TMDBGenre[] }>("/genre/tv/list"),
+      ]);
+      const map = new Map<number, string>();
+      for (const g of [...movieGenres.genres, ...tvGenres.genres]) {
+        if (!map.has(g.id)) map.set(g.id, g.name);
+      }
+      genreCache = map;
+      return map;
+    } catch {
+      return new Map();
+    }
+  })();
+
+  return genreFetchPromise;
+}
+
+/** Resolve genre IDs to human-readable names */
+async function resolveGenreNames(
+  genreIds: number[] | undefined,
+  genreObjects: { id: number; name: string }[] | undefined
+): Promise<string[]> {
+  // If we already have genre objects, use them directly
+  if (genreObjects && genreObjects.length > 0) {
+    return genreObjects.map((g) => g.name).slice(0, 4);
+  }
+
+  // Resolve IDs to names using cache
+  if (genreIds && genreIds.length > 0) {
+    const cache = await ensureGenreCache();
+    const names = genreIds
+      .map((id) => cache.get(id))
+      .filter(Boolean) as string[];
+    return names.slice(0, 4);
+  }
+
+  return [];
 }
 
 async function tmdbFetch<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
@@ -109,8 +160,10 @@ export async function searchTV(query: string, page: number = 1): Promise<TMDBMov
 }
 
 export async function getGenres(): Promise<TMDBGenre[]> {
-  const movieGenres = await tmdbFetch<{ genres: TMDBGenre[] }>("/genre/movie/list");
-  const tvGenres = await tmdbFetch<{ genres: TMDBGenre[] }>("/genre/tv/list");
+  const [movieGenres, tvGenres] = await Promise.all([
+    tmdbFetch<{ genres: TMDBGenre[] }>("/genre/movie/list"),
+    tmdbFetch<{ genres: TMDBGenre[] }>("/genre/tv/list"),
+  ]);
   const allGenres = new Map<number, TMDBGenre>();
   for (const g of [...movieGenres.genres, ...tvGenres.genres]) {
     if (!allGenres.has(g.id)) allGenres.set(g.id, g);
@@ -156,7 +209,7 @@ export function getBackdropUrl(path: string | null, size: string = "original"): 
 }
 
 /** Convert a TMDB movie/show to our MediaItem format */
-export function toMediaItem(item: TMDBMovie): {
+export async function toMediaItem(item: TMDBMovie): Promise<{
   id: string;
   tmdb_id: number;
   title: string;
@@ -167,12 +220,14 @@ export function toMediaItem(item: TMDBMovie): {
   description: string;
   posterImage: string;
   backdropImage: string;
-} {
+  numberOfSeasons?: number;
+}> {
   const title = item.title || item.name || "Unknown";
   const dateStr = item.release_date || item.first_air_date || "";
   const year = dateStr ? parseInt(dateStr.substring(0, 4)) : 0;
   const mediaType = item.media_type || (item.first_air_date ? "tv" : "movie");
   const type = mediaType === "tv" ? "TV Series" : "Movie";
+  const genres = await resolveGenreNames(item.genre_ids, item.genres);
 
   return {
     id: `${mediaType}-${item.id}`,
@@ -181,9 +236,10 @@ export function toMediaItem(item: TMDBMovie): {
     year,
     type,
     rating: Math.round(item.vote_average * 10) / 10,
-    genres: (item.genres || []).map((g) => g.name).slice(0, 4),
+    genres,
     description: item.overview || "No description available.",
     posterImage: getImageUrl(item.poster_path),
     backdropImage: getBackdropUrl(item.backdrop_path),
+    ...(mediaType === "tv" && item.number_of_seasons ? { numberOfSeasons: item.number_of_seasons } : {}),
   };
 }

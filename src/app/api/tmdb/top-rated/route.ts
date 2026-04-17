@@ -4,7 +4,7 @@ import { getTopRated, toMediaItem } from "@/lib/tmdb";
 export async function GET() {
   try {
     const results = await getTopRated(1);
-    const items = results.slice(0, 20).map(toMediaItem);
+    const items = await Promise.all(results.slice(0, 20).map(toMediaItem));
 
     return NextResponse.json({ items });
   } catch (error) {

@@ -8,7 +8,7 @@ export async function GET(request: Request) {
     const timeWindow = searchParams.get("window") || "week";
 
     const results = await getTrending(mediaType, timeWindow);
-    const items = results.slice(0, 20).map(toMediaItem);
+    const items = await Promise.all(results.slice(0, 20).map(toMediaItem));
 
     return NextResponse.json({ items });
   } catch (error) {

@@ -9,14 +9,16 @@ export async function GET() {
     ]);
 
     const seen = new Set<number>();
-    const items: ReturnType<typeof toMediaItem>[] = [];
+    const rawItems: typeof popular = [];
 
     for (const item of [...popular, ...topRated]) {
-      if (!seen.has(item.id) && items.length < 20) {
+      if (!seen.has(item.id)) {
         seen.add(item.id);
-        items.push(toMediaItem(item));
+        rawItems.push(item);
       }
     }
+
+    const items = await Promise.all(rawItems.slice(0, 20).map(toMediaItem));
 
     return NextResponse.json({ items });
   } catch (error) {

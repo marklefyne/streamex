@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     }
 
     const results = await searchMulti(query.trim(), parseInt(page));
-    const items = results.slice(0, 20).map(toMediaItem);
+    const items = await Promise.all(results.slice(0, 20).map(toMediaItem));
 
     return NextResponse.json({ items, total: results.length });
   } catch (error) {

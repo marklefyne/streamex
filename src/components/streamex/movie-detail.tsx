@@ -21,6 +21,10 @@ function isLegacyItem(item: CardItem): item is MediaItem {
   return "posterGradient" in item;
 }
 
+function isLiveItem(item: CardItem): item is LiveMediaItem {
+  return "backdropImage" in item;
+}
+
 interface MovieDetailProps {
   item: CardItem;
   similarItems: CardItem[];
@@ -41,9 +45,11 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
   }
 
   const isTV = item.type === "TV Series" || item.type === "tv" || item.type === "Anime";
-  const backdropSrc = isLegacyItem(item) ? "/streamex/hero-bg.png" : (item as LiveMediaItem).backdropImage;
+  const backdropSrc = isLiveItem(item) ? item.backdropImage : "/streamex/hero-bg.png";
   const runtime = isLegacyItem(item) ? item.runtime : undefined;
-  const seasonsCount = isLegacyItem(item) ? item.seasons : undefined;
+  const legacySeasons = isLegacyItem(item) ? item.seasons : undefined;
+  const liveSeasons = isLiveItem(item) ? item.numberOfSeasons : undefined;
+  const seasonsCount = legacySeasons || liveSeasons;
 
   return (
     <div className="min-h-full">
@@ -238,7 +244,7 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
           <h3 className="text-lg font-bold text-white mb-4">You May Also Like</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {similarItems.slice(0, 12).map((simItem, i) => (
-              <MediaCard key={simItem.id} item={simItem} index={i} />
+              <MediaCard key={simItem.id} item={simItem} index={i} onSelect={handlePlay} />
             ))}
           </div>
         </motion.div>
