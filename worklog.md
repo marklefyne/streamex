@@ -477,3 +477,52 @@ Stage Summary:
 - 3 new API routes: anime, top-rated-tv
 - 2 new TMDB lib functions: getTrendingAnime, toAnimeMediaItem
 - All lint checks pass with zero errors
+
+---
+Task ID: 14
+Agent: Main Agent
+Task: Complete Live Sports section redesign with professional dashboard, stadium card backgrounds, and pop-up streaming player
+
+Work Log:
+- Read existing live-sports.tsx (424 lines), page.tsx (643 lines), globals.css, mock-data.ts, mini-player.tsx
+- Generated 8 AI sport-themed background images using z-ai image generation CLI:
+  - football.png, basketball.png, fight.png, cricket.png, hockey.png, baseball.png, tennis.png, hero.png
+  - All images 1344x768, stored in public/sports/
+- Completely rewrote live-sports.tsx with:
+  - Hero banner with stadium background, gradient overlays, live event counter
+  - 20 hardcoded matches across 7 sports (Football, Basketball, Fight, Cricket, Hockey, Baseball, Tennis)
+  - Filter tabs: Live Now (with pulse badge), Today, All Matches
+  - Sport category dropdown with emoji icons and match counts
+  - Professional card design: stadium background images, team logos (colored circles with initials), league badges
+  - LIVE status: red pulse animation, score display (e.g., "2 - 1"), match time indicator
+  - Scheduled status: clock icon, start time display
+  - Sport-specific accent colors (green for football, orange for basketball, etc.)
+  - Watch Now / Watch Live button with hover color animation
+  - Responsive grid: 2 cols mobile → 3 md → 4 lg → 5 xl
+  - Framer Motion staggered card entrance animations
+  - Card hover: -4px lift with spring physics
+- Created new sports-player-modal.tsx pop-up player:
+  - Dark overlay with backdrop blur
+  - Modal slide-up animation (scale 0.92→1, y 40→0)
+  - Match info header: team logos, names, score, LIVE badge
+  - 16:9 iframe embed player with 3 server options
+  - Server selector bar: Server 1 (Zap), Server 2 (Shield), Server 3 (Server)
+  - Active server highlighted with accent glow and pulse indicator
+  - Close (X) button and backdrop click to dismiss
+  - League badge display on desktop
+- Added new CSS animations to globals.css:
+  - sportBgShimmer: subtle shimmer overlay on card backgrounds
+  - liveGlow: red glow pulse for active sport cards
+  - modalSlideUp: smooth modal enter animation
+  - watchGlow: button hover glow effect
+  - scoreFlash: score ticker animation
+- Cleaned up unused imports (Radio, Zap, Tv, Users from live-sports; ChevronDown, showServerDropdown from modal)
+- ESLint: 0 errors, 0 warnings
+- All 8 images verified accessible (200 status, 119KB-224KB)
+
+Stage Summary:
+- Files created: src/components/streamex/sports-player-modal.tsx (224 lines)
+- Files rewritten: src/components/streamex/live-sports.tsx (540 lines)
+- Files updated: src/app/globals.css (added ~70 lines of CSS animations)
+- Images generated: public/sports/{football,basketball,fight,cricket,hockey,baseball,tennis,hero}.png
+- No changes needed to page.tsx (already imports and renders LiveSports)
