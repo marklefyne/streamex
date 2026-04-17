@@ -13,6 +13,7 @@ import {
   Heart,
   Share2,
   Subtitles,
+  Zap,
 } from "lucide-react";
 import type { CardItem, LiveMediaItem, MediaItem } from "@/lib/mock-data";
 import { VideoPlayer } from "./video-player";
@@ -61,11 +62,12 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
   const liveSeasons = isLiveItem(item) ? item.numberOfSeasons : undefined;
   const seasonsCount = legacySeasons || liveSeasons;
 
+  const ccServers = SERVERS.filter(s => s.hasSubtitles).map(s => s.description).join(", ");
+
   return (
     <div className="min-h-full">
       {/* Backdrop Hero */}
       <div className="relative w-full h-[55vh] min-h-[380px] max-h-[520px] overflow-hidden">
-        {/* Background */}
         {backdropSrc && (
           <div
             className="absolute inset-0 bg-cover bg-center opacity-30"
@@ -77,7 +79,6 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black to-transparent" />
 
-        {/* Back button */}
         <motion.button
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
@@ -89,7 +90,6 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
           Back
         </motion.button>
 
-        {/* Content */}
         <div className="relative z-10 flex items-end h-full px-6 sm:px-8 pb-10">
           <motion.div
             className="flex gap-6 max-w-4xl"
@@ -97,7 +97,6 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            {/* Poster */}
             <div className="hidden sm:block flex-shrink-0 w-40 md:w-48">
               <div className="aspect-[2/3] rounded-lg overflow-hidden shadow-2xl shadow-black/60">
                 <img
@@ -111,7 +110,6 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
               </div>
             </div>
 
-            {/* Info */}
             <div className="flex-1 pb-2">
               <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white mb-3 leading-tight tracking-tight">
                 {item.title}
@@ -212,36 +210,45 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <div className="flex items-center gap-3 mb-3">
-            <h3 className="text-sm font-bold text-white">Choose a Server to Play</h3>
-            <span className="flex items-center gap-1 text-[10px] text-streamex-text-secondary px-2 py-0.5 rounded bg-white/5">
-              <Subtitles size={10} />
-              Servers 1 &amp; 3 have subtitles
+          <div className="flex items-center gap-3 mb-4">
+            <Zap size={14} className="text-streamex-accent" />
+            <h3 className="text-sm font-bold text-white">Choose a Server</h3>
+            <span className="text-[10px] text-streamex-text-secondary px-2 py-0.5 rounded bg-white/5">
+              {SERVERS.length} sources · Auto-fallback enabled
             </span>
+            {ccServers && (
+              <span className="flex items-center gap-1 text-[10px] text-emerald-400/80 bg-emerald-400/10 px-2 py-0.5 rounded">
+                <Subtitles size={10} />
+                {ccServers} have subtitles
+              </span>
+            )}
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
             {SERVERS.map((server, idx) => (
               <button
                 key={server.id}
                 onClick={() => handlePlay(idx)}
-                className="flex flex-col items-center gap-1 px-3 py-3 rounded-lg bg-streamex-surface hover:bg-streamex-surface-hover border border-streamex-border hover:border-streamex-accent/50 text-white transition-all duration-200 cursor-pointer group relative"
+                className="flex items-center gap-3 px-4 py-3.5 rounded-lg bg-streamex-surface hover:bg-streamex-surface-hover border border-streamex-border hover:border-streamex-accent/50 text-white transition-all duration-200 cursor-pointer group relative"
               >
                 {server.hasSubtitles && (
-                  <span className="absolute top-1 right-1 text-[8px] text-emerald-400 bg-emerald-400/10 px-1 rounded font-bold uppercase">
+                  <span className="absolute top-2 right-2 text-[8px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded font-bold uppercase">
                     CC
                   </span>
                 )}
                 <Play
-                  size={16}
-                  className="text-streamex-text-secondary group-hover:text-streamex-accent transition-colors"
+                  size={18}
+                  className="text-streamex-text-secondary group-hover:text-streamex-accent transition-colors flex-shrink-0"
                 />
-                <span className="text-xs font-semibold">{server.name}</span>
-                <span className="text-[10px] text-streamex-text-secondary">
-                  {server.description}
-                </span>
+                <div className="text-left min-w-0">
+                  <p className="text-xs font-semibold truncate">{server.name}</p>
+                  <p className="text-[10px] text-streamex-text-secondary truncate">{server.description}</p>
+                </div>
               </button>
             ))}
           </div>
+          <p className="text-[10px] text-streamex-text-secondary/50 mt-3">
+            If a server doesn&apos;t load, the player automatically switches to the next available source.
+          </p>
         </motion.div>
       </div>
 
@@ -262,7 +269,6 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
         </motion.div>
       )}
 
-      {/* Footer */}
       <footer className="border-t border-streamex-border px-8 py-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-streamex-text-secondary">
           <p>&copy; 2025 Flux Stream. All rights reserved.</p>

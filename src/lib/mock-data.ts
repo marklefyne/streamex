@@ -44,58 +44,40 @@ export function getEmbedUrl(
   const e = episode ?? 1;
 
   switch (serverId) {
-    // Server 1: vidsrc.icu (reliable, TMDB-based, has subtitles)
-    case "vidsrc-icu":
+    // VidSrc.me — uses TMDB path params, most widely supported
+    case "vidsrc-me":
       return mediaType === "movie"
-        ? `https://vidsrc.icu/embed/movie/${tmdbId}`
-        : `https://vidsrc.icu/embed/tv/${tmdbId}/${s}/${e}`;
+        ? `https://vidsrc.me/embed/movie/${tmdbId}`
+        : `https://vidsrc.me/embed/tv/${tmdbId}/${s}/${e}`;
 
-    // Server 2: vidsrc.xyz (reliable, fast)
-    case "vidsrc-xyz":
+    // VidSrc.to — uses TMDB path params, subtitle support built-in
+    case "vidsrc-to":
       return mediaType === "movie"
-        ? `https://vidsrc.xyz/embed/movie/${tmdbId}`
-        : `https://vidsrc.xyz/embed/tv/${tmdbId}/${s}/${e}`;
+        ? `https://vidsrc.to/embed/movie/${tmdbId}`
+        : `https://vidsrc.to/embed/tv/${tmdbId}/${s}/${e}`;
 
-    // Server 3: embed.su (reliable, built-in subtitle support)
+    // 2Embed.cc — uses TMDB path params, fast and reliable
+    case "2embed-cc":
+      return mediaType === "movie"
+        ? `https://www.2embed.cc/embed/${tmdbId}`
+        : `https://www.2embed.cc/embed/${tmdbId}/${s}/${e}`;
+
+    // Embed.su — uses TMDB path params, subtitle support
     case "embed-su":
       return mediaType === "movie"
         ? `https://embed.su/embed/movie/${tmdbId}`
         : `https://embed.su/embed/tv/${tmdbId}/${s}/${e}`;
 
-    // Server 4: vidsrc.rip
-    case "vidsrc-rip":
+    // SuperEmbed.stream (multiembed.mov) — uses TMDB query params, multi-source
+    case "superembed":
       return mediaType === "movie"
-        ? `https://vidsrc.rip/embed/movie/${tmdbId}`
-        : `https://vidsrc.rip/embed/tv/${tmdbId}/${s}/${e}`;
-
-    // Server 5: vidsrc.in
-    case "vidsrc-in":
-      return mediaType === "movie"
-        ? `https://vidsrc.in/embed/movie/${tmdbId}`
-        : `https://vidsrc.in/embed/tv/${tmdbId}/${s}/${e}`;
-
-    // Server 6: autoembed (fallback)
-    case "autoembed":
-      return mediaType === "movie"
-        ? `https://player.autoembed.cc/embed/movie/${tmdbId}`
-        : `https://player.autoembed.cc/embed/tv/${tmdbId}/${s}/${e}`;
-
-    // Server 7: vidsrc.la (extra fallback)
-    case "vidsrc-la":
-      return mediaType === "movie"
-        ? `https://vidsrc.la/embed/movie/${tmdbId}`
-        : `https://vidsrc.la/embed/tv/${tmdbId}/${s}/${e}`;
-
-    // Server 8: vidsrc.cc (extra fallback)
-    case "vidsrc-cc":
-      return mediaType === "movie"
-        ? `https://vidsrc.cc/embed/movie/${tmdbId}`
-        : `https://vidsrc.cc/embed/tv/${tmdbId}/${s}/${e}`;
+        ? `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`
+        : `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${s}&e=${e}`;
 
     default:
       return mediaType === "movie"
-        ? `https://vidsrc.icu/embed/movie/${tmdbId}`
-        : `https://vidsrc.icu/embed/tv/${tmdbId}/${s}/${e}`;
+        ? `https://vidsrc.me/embed/movie/${tmdbId}`
+        : `https://vidsrc.me/embed/tv/${tmdbId}/${s}/${e}`;
   }
 }
 
@@ -104,15 +86,13 @@ export interface ServerOption {
   name: string;
   description: string;
   hasSubtitles?: boolean;
+  tier: "primary" | "fallback";
 }
 
 export const SERVERS: ServerOption[] = [
-  { id: "vidsrc-icu", name: "Server 1", description: "VidSrc.icu", hasSubtitles: true },
-  { id: "vidsrc-xyz", name: "Server 2", description: "VidSrc.xyz" },
-  { id: "embed-su", name: "Server 3", description: "Embed.su", hasSubtitles: true },
-  { id: "vidsrc-rip", name: "Server 4", description: "VidSrc.rip" },
-  { id: "vidsrc-in", name: "Server 5", description: "VidSrc.in" },
-  { id: "autoembed", name: "Server 6", description: "AutoEmbed" },
-  { id: "vidsrc-la", name: "Server 7", description: "VidSrc.la" },
-  { id: "vidsrc-cc", name: "Server 8", description: "VidSrc.cc" },
+  { id: "vidsrc-me",   name: "VidSrc",       description: "vidsrc.me",       tier: "primary" },
+  { id: "vidsrc-to",   name: "VidSrc",       description: "vidsrc.to",       hasSubtitles: true, tier: "primary" },
+  { id: "2embed-cc",   name: "2Embed",       description: "2embed.cc",       tier: "primary" },
+  { id: "embed-su",    name: "Embed",        description: "embed.su",        hasSubtitles: true, tier: "primary" },
+  { id: "superembed",  name: "SuperEmbed",   description: "superembed.stream", tier: "fallback" },
 ];

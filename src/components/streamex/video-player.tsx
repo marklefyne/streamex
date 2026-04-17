@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Star,
@@ -12,6 +12,9 @@ import {
   AlertTriangle,
   RefreshCw,
   Subtitles,
+  Zap,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import type { CardItem, LiveMediaItem, MediaItem } from "@/lib/mock-data";
 import { getEmbedUrl, SERVERS } from "@/lib/mock-data";
@@ -30,17 +33,20 @@ interface VideoPlayerProps {
   initialServerIndex?: number;
 }
 
+// Smart fallback: auto-try next server if current one doesn't load within timeout
+const LOAD_TIMEOUT_MS = 10000; // 10 seconds
+
 export function VideoPlayer({ item, onClose, initialServerIndex = 0 }: VideoPlayerProps) {
   const [activeServerIndex, setActiveServerIndex] = useState(initialServerIndex);
   const [season, setSeason] = useState(1);
   const [episode, setEpisode] = useState(1);
-  const [isLoading, setIsLoading] = useState(true);
+  const [playerState, setPlayerState] = useState<"loading" | "playing" | "error" | "all-exhausted">("loading");
   const [iframeKey, setIframeKey] = useState(0);
-  const [hasError, setHasError] = useState(false);
-  const [errorCount, setErrorCount] = useState(0);
+  const [triedServers, setTriedServers] = useState<Set<number>>(new Set());
+  const [fallbackInProgress, setFallbackInProgress] = useState(false);
+  const loadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const tmdbId = item.tmdb_id;
-  // Detect TV shows from multiple possible type values
   const isTV =
     item.type === "TV Series" ||
     item.type === "tv" ||
@@ -51,47 +57,105 @@ export function VideoPlayer({ item, onClose, initialServerIndex = 0 }: VideoPlay
   const activeServer = SERVERS[activeServerIndex] || SERVERS[0];
   const embedUrl = getEmbedUrl(tmdbId, mediaType, activeServer.id, season, episode);
 
-  // Season count: use real TMDB data if available, otherwise default to 10
+  // Season/episode counts
   const seasonsCount = isLegacyItem(item)
     ? item.seasons || 1
     : isLiveItem(item) && item.numberOfSeasons
       ? item.numberOfSeasons
       : 10;
 
-  // Episode count for current season: use real data if available, otherwise default to 30
   const seasonEpisodesData = isLiveItem(item) ? item.seasonEpisodes : undefined;
   const currentSeasonEpisodes = seasonEpisodesData?.[season] || 30;
 
-  // Auto-try next server on error (cycle through all providers)
+  // Smart fallback: auto-try next server on timeout
   const tryNextServer = useCallback(() => {
-    const nextIndex = (activeServerIndex + 1) % SERVERS.length;
-    if (nextIndex === 0 && errorCount >= SERVERS.length) {
-      // All servers tried — stop
-      return;
+    setTriedServers((prev) => {
+      const next = new Set(prev);
+      next.add(activeServerIndex);
+
+      // Find next untried server
+      let found = false;
+      for (let i = 0; i < SERVERS.length; i++) {
+        if (!next.has(i)) {
+          setActiveServerIndex(i);
+          setPlayerState("loading");
+          setFallbackInProgress(true);
+          setIframeKey((k) => k + 1);
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        // All servers exhausted
+        setPlayerState("all-exhausted");
+      }
+
+      return next;
+    });
+  }, [activeServerIndex]);
+
+  // Clear load timer and set new one when server changes
+  useEffect(() => {
+    if (loadTimerRef.current) {
+      clearTimeout(loadTimerRef.current);
     }
-    setActiveServerIndex(nextIndex);
-    setErrorCount((c) => c + 1);
-    setIsLoading(true);
-    setHasError(false);
-    setIframeKey((k) => k + 1);
-  }, [activeServerIndex, errorCount]);
+
+    if (playerState === "loading") {
+      loadTimerRef.current = setTimeout(() => {
+        // Timeout — try next server
+        setPlayerState("error");
+      }, LOAD_TIMEOUT_MS);
+    }
+
+    return () => {
+      if (loadTimerRef.current) {
+        clearTimeout(loadTimerRef.current);
+      }
+    };
+  }, [playerState, iframeKey]);
 
   const handleServerChange = useCallback((index: number) => {
     setActiveServerIndex(index);
-    setErrorCount(0);
-    setIsLoading(true);
-    setHasError(false);
+    setTriedServers(new Set([index]));
+    setPlayerState("loading");
+    setFallbackInProgress(false);
     setIframeKey((k) => k + 1);
   }, []);
 
   const handleEpisodeChange = useCallback((s: number, e: number) => {
     setSeason(s);
     setEpisode(e);
-    setErrorCount(0);
-    setIsLoading(true);
-    setHasError(false);
+    setTriedServers(new Set());
+    setPlayerState("loading");
+    setFallbackInProgress(false);
     setIframeKey((k) => k + 1);
   }, []);
+
+  const handleIframeLoad = useCallback(() => {
+    if (loadTimerRef.current) {
+      clearTimeout(loadTimerRef.current);
+    }
+    setPlayerState("playing");
+    setFallbackInProgress(false);
+  }, []);
+
+  const handleIframeError = useCallback(() => {
+    if (loadTimerRef.current) {
+      clearTimeout(loadTimerRef.current);
+    }
+    setPlayerState("error");
+  }, []);
+
+  // Auto-advance on error
+  useEffect(() => {
+    if (playerState === "error") {
+      const timer = setTimeout(() => {
+        tryNextServer();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [playerState, tryNextServer]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
@@ -123,47 +187,75 @@ export function VideoPlayer({ item, onClose, initialServerIndex = 0 }: VideoPlay
       <div className="relative flex-1 bg-black min-h-0">
         {/* Loading overlay */}
         <AnimatePresence>
-          {isLoading && !hasError && (
+          {playerState === "loading" && (
             <motion.div
-              key="loader"
+              key={`loader-${iframeKey}`}
               initial={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.4 }}
+              transition={{ duration: 0.3 }}
               className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black"
             >
               <Loader2 className="animate-spin text-streamex-accent mb-3" size={40} />
-              <p className="text-sm text-streamex-text-secondary">
-                Loading stream from {activeServer.description}…
+              <p className="text-sm text-streamex-text-secondary mb-1">
+                {fallbackInProgress ? `Trying ${activeServer.description}…` : `Loading from ${activeServer.description}…`}
+              </p>
+              {fallbackInProgress && (
+                <p className="text-[10px] text-streamex-text-secondary/60">
+                  Auto-switching to next available server
+                </p>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Error overlay — brief flash before auto-fallback */}
+        <AnimatePresence>
+          {playerState === "error" && (
+            <motion.div
+              key="error-flash"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black"
+            >
+              <RefreshCw className="animate-spin text-streamex-accent mb-2" size={24} />
+              <p className="text-xs text-streamex-text-secondary">
+                {activeServer.description} unavailable — switching…
               </p>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Error overlay with auto-retry */}
+        {/* All servers exhausted */}
         <AnimatePresence>
-          {hasError && (
+          {playerState === "all-exhausted" && (
             <motion.div
-              key="error"
+              key="all-exhausted"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black"
             >
-              <AlertTriangle className="text-amber-500 mb-3" size={40} />
-              <p className="text-sm text-white mb-1">This source is unavailable</p>
+              <XCircle className="text-red-500 mb-3" size={40} />
+              <p className="text-sm text-white mb-1">No servers available</p>
               <p className="text-xs text-streamex-text-secondary mb-4">
-                {activeServer.description} couldn&apos;t load this title
+                All {SERVERS.length} servers were tried for this title
               </p>
-              <button
-                onClick={tryNextServer}
-                className="flex items-center gap-2 px-5 py-2.5 bg-streamex-accent hover:bg-streamex-accent-hover text-white rounded-lg font-semibold text-sm transition-colors cursor-pointer"
-              >
-                <RefreshCw size={14} />
-                Try Next Server
-                <span className="text-white/60 text-xs">
-                  ({activeServerIndex + 1}/{SERVERS.length})
-                </span>
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setTriedServers(new Set());
+                    setPlayerState("loading");
+                    setFallbackInProgress(false);
+                    setIframeKey((k) => k + 1);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-streamex-accent hover:bg-streamex-accent-hover text-white rounded-lg font-semibold text-xs transition-colors cursor-pointer"
+                >
+                  <RefreshCw size={12} />
+                  Retry All
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -174,61 +266,60 @@ export function VideoPlayer({ item, onClose, initialServerIndex = 0 }: VideoPlay
           className="absolute inset-0 w-full h-full"
           allowFullScreen
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-          onLoad={() => {
-            setIsLoading(false);
-            setHasError(false);
-          }}
-          onError={() => {
-            setIsLoading(false);
-            setHasError(true);
-          }}
+          onLoad={handleIframeLoad}
+          onError={handleIframeError}
           referrerPolicy="origin"
           title={`${item.title} - ${activeServer.description}`}
         />
       </div>
 
       {/* Bottom panel */}
-      <div className="bg-[#0a0a0a] border-t border-streamex-border flex-shrink-0">
+      <div className="bg-[#0a0a0a] border-t border-streamex-border flex-shrink-0 overflow-y-auto max-h-[45vh] custom-scrollbar">
         {/* Server switcher */}
         <div className="px-4 sm:px-6 pt-4 pb-2">
           <div className="flex items-center gap-2 mb-2.5">
+            <Zap size={12} className="text-streamex-accent" />
             <span className="text-[11px] font-bold uppercase tracking-widest text-streamex-text-secondary">
-              Stream Server
+              Stream Source
             </span>
-            <span className="flex items-center gap-0.5 text-[9px] text-emerald-400/70 bg-emerald-400/10 px-1.5 py-0.5 rounded uppercase font-bold">
-              <Subtitles size={8} />
-              CC = Subtitles
-            </span>
+            {playerState === "playing" && (
+              <span className="flex items-center gap-1 text-[9px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded uppercase font-bold">
+                <CheckCircle2 size={8} />
+                Connected
+              </span>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
-            {SERVERS.map((server, idx) => (
-              <button
-                key={server.id}
-                onClick={() => handleServerChange(idx)}
-                className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-all duration-200 cursor-pointer group ${
-                  idx === activeServerIndex
-                    ? "bg-streamex-accent text-white shadow-lg shadow-streamex-accent/20"
-                    : "bg-white/5 text-streamex-text-secondary hover:text-white hover:bg-white/10 border border-streamex-border"
-                }`}
-              >
-                {idx === activeServerIndex && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full" />
-                )}
-                <span>{server.name}</span>
-                <span
-                  className={`text-[10px] ${
-                    idx === activeServerIndex
-                      ? "text-white/70"
-                      : "text-streamex-text-secondary/60"
+            {SERVERS.map((server, idx) => {
+              const isActive = idx === activeServerIndex;
+              const wasTried = triedServers.has(idx);
+              const isPlaying = isActive && playerState === "playing";
+
+              return (
+                <button
+                  key={server.id}
+                  onClick={() => handleServerChange(idx)}
+                  className={`relative flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 cursor-pointer group ${
+                    isPlaying
+                      ? "bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 shadow-lg shadow-emerald-500/10"
+                      : isActive
+                        ? "bg-streamex-accent text-white shadow-lg shadow-streamex-accent/20"
+                        : wasTried
+                          ? "bg-white/3 text-streamex-text-secondary/40 border border-streamex-border/30 opacity-60"
+                          : "bg-white/5 text-streamex-text-secondary hover:text-white hover:bg-white/10 border border-streamex-border"
                   }`}
                 >
-                  {server.description}
-                </span>
-                {server.hasSubtitles && (
-                  <span className="text-[9px] text-emerald-400 font-bold uppercase">CC</span>
-                )}
-              </button>
-            ))}
+                  {isPlaying && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                  )}
+                  <span className="font-semibold">{server.name}</span>
+                  <span className="text-[10px] opacity-70">{server.description}</span>
+                  {server.hasSubtitles && (
+                    <span className="text-[9px] text-emerald-400 font-bold uppercase">CC</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
