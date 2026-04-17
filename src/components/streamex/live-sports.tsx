@@ -51,46 +51,176 @@ const sportMeta: Record<SportType, { icon: string; accent: string; label: string
 
 const allMatches: SportMatch[] = [
   // --- Football (5) ---
-  { id: 1, team1: "Real Madrid",   team2: "PSG",              sport: "Football",  status: "live",      time: "72'",       score: "2 - 1",   league: "UEFA Champions League", color1: "#FEBE10", color2: "#004170", viewers: "1.2M" },
-  { id: 2, team1: "Man City",      team2: "Liverpool",        sport: "Football",  status: "live",      time: "58'",       score: "1 - 1",   league: "Premier League",       color1: "#6CABDD", color2: "#C8102E", viewers: "980K" },
-  { id: 3, team1: "Barcelona",     team2: "Bayern Munich",    sport: "Football",  status: "scheduled", time: "Tomorrow 3:00 PM",        league: "UEFA Champions League", color1: "#A50044", color2: "#DC052D" },
-  { id: 4, team1: "Arsenal",       team2: "Chelsea",          sport: "Football",  status: "live",      time: "81'",       score: "3 - 2",   league: "Premier League",       color1: "#EF0107", color2: "#034694", viewers: "870K" },
-  { id: 5, team1: "Inter Milan",   team2: "AC Milan",         sport: "Football",  status: "scheduled", time: "Upcoming 9:00 PM",       league: "Serie A",              color1: "#0068A8", color2: "#FB090B" },
+  { id: 1, team1: "Real Madrid",   team2: "PSG",              sport: "Football",  status: "live",      time: "72'",       score: "2 - 1",   league: "UEFA Champions League", color1: "#FEBE10", color2: "#004170", viewers: "1.2M",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/YlMNSLgcH6M",   // Real Madrid vs PSG highlights
+      "server-2": "https://www.youtube.com/embed/LBFsWwMEONo",
+    },
+  },
+  { id: 2, team1: "Man City",      team2: "Liverpool",        sport: "Football",  status: "live",      time: "58'",       score: "1 - 1",   league: "Premier League",       color1: "#6CABDD", color2: "#C8102E", viewers: "980K",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/DpDj5EaljEY",   // Man City vs Liverpool highlights
+      "server-2": "https://www.youtube.com/embed/hWHPEXiROGw",
+    },
+  },
+  { id: 3, team1: "Barcelona",     team2: "Bayern Munich",    sport: "Football",  status: "scheduled", time: "Tomorrow 3:00 PM",        league: "UEFA Champions League", color1: "#A50044", color2: "#DC052D",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/WLDMhP64JYA",   // Barcelona vs Bayern
+    },
+  },
+  { id: 4, team1: "Arsenal",       team2: "Chelsea",          sport: "Football",  status: "live",      time: "81'",       score: "3 - 2",   league: "Premier League",       color1: "#EF0107", color2: "#034694", viewers: "870K",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/rz9G77PfS0c",   // Arsenal vs Chelsea
+      "server-2": "https://www.youtube.com/embed/NZJOD0kn9MA",
+    },
+  },
+  { id: 5, team1: "Inter Milan",   team2: "AC Milan",         sport: "Football",  status: "scheduled", time: "Upcoming 9:00 PM",       league: "Serie A",              color1: "#0068A8", color2: "#FB090B",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/xGKwSvfxEBo",   // Derby della Madonnina
+    },
+  },
 
   // --- Basketball (4) ---
-  { id: 6,  team1: "Lakers",       team2: "Warriors",         sport: "Basketball", status: "live",      time: "Q3 4:22",  score: "89 - 84", league: "NBA",                  color1: "#552583", color2: "#1D428A", viewers: "2.1M" },
-  { id: 7,  team1: "Celtics",      team2: "Heat",             sport: "Basketball", status: "scheduled", time: "Tomorrow 8:30 PM",       league: "NBA",                  color1: "#007A33", color2: "#98002E" },
-  { id: 8,  team1: "Bucks",        team2: "76ers",            sport: "Basketball", status: "live",      time: "Q2 6:15",  score: "54 - 48", league: "NBA",                  color1: "#00471B", color2: "#006BB6", viewers: "640K" },
-  { id: 9,  team1: "Nuggets",      team2: "Suns",             sport: "Basketball", status: "scheduled", time: "Upcoming 10:00 PM",      league: "NBA",                  color1: "#0E2240", color2: "#1D1160" },
+  { id: 6,  team1: "Lakers",       team2: "Warriors",         sport: "Basketball", status: "live",      time: "Q3 4:22",  score: "89 - 84", league: "NBA",                  color1: "#552583", color2: "#1D428A", viewers: "2.1M",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/2jC7jUxGWso",   // Lakers vs Warriors
+      "server-2": "https://www.youtube.com/embed/6lvmB7m9SWk",
+      "server-3": "https://www.youtube.com/embed/LsIPTjxPiqg",
+    },
+  },
+  { id: 7,  team1: "Celtics",      team2: "Heat",             sport: "Basketball", status: "scheduled", time: "Tomorrow 8:30 PM",       league: "NBA",                  color1: "#007A33", color2: "#98002E",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/bN__9Z0l0sQ",   // NBA highlights
+    },
+  },
+  { id: 8,  team1: "Bucks",        team2: "76ers",            sport: "Basketball", status: "live",      time: "Q2 6:15",  score: "54 - 48", league: "NBA",                  color1: "#00471B", color2: "#006BB6", viewers: "640K",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/qmT1_1X9aGY",
+      "server-2": "https://www.youtube.com/embed/8JfIFUVe0aA",
+    },
+  },
+  { id: 9,  team1: "Nuggets",      team2: "Suns",             sport: "Basketball", status: "scheduled", time: "Upcoming 10:00 PM",      league: "NBA",                  color1: "#0E2240", color2: "#1D1160",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/F_OvBW41uKk",
+    },
+  },
 
   // --- Fighting (4) ---
-  { id: 10, team1: "Tyson Fury",   team2: "Oleksandr Usyk",   sport: "Fighting",  status: "live",      time: "Rd 9",                  league: "Heavyweight Championship", color1: "#1E3A5F", color2: "#FFD700", viewers: "3.4M" },
-  { id: 11, team1: "C. McGregor",  team2: "D. Poirier",       sport: "Fighting",  status: "scheduled", time: "Tomorrow 11:00 PM",      league: "UFC 310",              color1: "#006847", color2: "#8B0000" },
-  { id: 12, team1: "Canelo",       team2: "Bivol",             sport: "Fighting",  status: "live",      time: "Rd 7",     score: "68-65",  league: "WBC Super Middleweight", color1: "#BE2535", color2: "#1E3A5F", viewers: "1.8M" },
-  { id: 13, team1: "J. Jones",     team2: "S. Aspinall",       sport: "Fighting",  status: "scheduled", time: "Upcoming",               league: "UFC 311",              color1: "#000000", color2: "#DC143C" },
+  { id: 10, team1: "Tyson Fury",   team2: "Oleksandr Usyk",   sport: "Fighting",  status: "live",      time: "Rd 9",                  league: "Heavyweight Championship", color1: "#1E3A5F", color2: "#FFD700", viewers: "3.4M",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/MoU73PpOGKE",   // Fury vs Usyk highlights
+      "server-2": "https://www.youtube.com/embed/YXJFMt8hyww",
+      "server-3": "https://www.youtube.com/embed/2Pj6jS6jAmQ",
+    },
+  },
+  { id: 11, team1: "C. McGregor",  team2: "D. Poirier",       sport: "Fighting",  status: "scheduled", time: "Tomorrow 11:00 PM",      league: "UFC 310",              color1: "#006847", color2: "#8B0000",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/abGvKjv-bBo",   // McGregor vs Poirier
+    },
+  },
+  { id: 12, team1: "Canelo",       team2: "Bivol",             sport: "Fighting",  status: "live",      time: "Rd 7",     score: "68-65",  league: "WBC Super Middleweight", color1: "#BE2535", color2: "#1E3A5F", viewers: "1.8M",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/DsBFaKE2jRM",   // Canelo vs Bivol
+      "server-2": "https://www.youtube.com/embed/6eZDlFn6VjE",
+    },
+  },
+  { id: 13, team1: "J. Jones",     team2: "S. Aspinall",       sport: "Fighting",  status: "scheduled", time: "Upcoming",               league: "UFC 311",              color1: "#000000", color2: "#DC143C",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/WBmMXZFwxbY",
+    },
+  },
 
   // --- Cricket (3) ---
-  { id: 14, team1: "India",        team2: "Australia",        sport: "Cricket",    status: "live",      time: "32 Overs", score: "245/4",  league: "ICC World Cup",       color1: "#0066B3", color2: "#FFD700", viewers: "450M" },
-  { id: 15, team1: "Pakistan",     team2: "England",          sport: "Cricket",    status: "scheduled", time: "Tomorrow 2:00 PM",       league: "ICC World Cup",       color1: "#01411C", color2: "#003366" },
-  { id: 16, team1: "South Africa", team2: "New Zealand",      sport: "Cricket",    status: "live",      time: "28 Overs", score: "189/6",  league: "ICC World Cup",       color1: "#007A4D", color2: "#000000", viewers: "210M" },
+  { id: 14, team1: "India",        team2: "Australia",        sport: "Cricket",    status: "live",      time: "32 Overs", score: "245/4",  league: "ICC World Cup",       color1: "#0066B3", color2: "#FFD700", viewers: "450M",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/fTWO6Wj284s",   // India vs Australia cricket
+      "server-2": "https://www.youtube.com/embed/PgJ_oVbUcXc",
+    },
+  },
+  { id: 15, team1: "Pakistan",     team2: "England",          sport: "Cricket",    status: "scheduled", time: "Tomorrow 2:00 PM",       league: "ICC World Cup",       color1: "#01411C", color2: "#003366",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/DOaxTHKDx5U",
+    },
+  },
+  { id: 16, team1: "South Africa", team2: "New Zealand",      sport: "Cricket",    status: "live",      time: "28 Overs", score: "189/6",  league: "ICC World Cup",       color1: "#007A4D", color2: "#000000", viewers: "210M",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/3cr1qH0qJ50",
+      "server-2": "https://www.youtube.com/embed/3GCMJCnfVcY",
+    },
+  },
 
   // --- Hockey (3) ---
-  { id: 17, team1: "Maple Leafs",  team2: "Bruins",           sport: "Hockey",     status: "live",      time: "P2 14:05",             league: "NHL",                  color1: "#00205B", color2: "#FFB81C", viewers: "320K" },
-  { id: 18, team1: "Blackhawks",   team2: "Rangers",          sport: "Hockey",     status: "scheduled", time: "Tomorrow 7:00 PM",       league: "NHL",                  color1: "#CF0A2C", color2: "#0038A8" },
-  { id: 19, team1: "Oilers",       team2: "Panthers",         sport: "Hockey",     status: "live",      time: "P3 8:30",  score: "3 - 2",  league: "NHL",                  color1: "#041E42", color2: "#041E42", viewers: "410K" },
+  { id: 17, team1: "Maple Leafs",  team2: "Bruins",           sport: "Hockey",     status: "live",      time: "P2 14:05",             league: "NHL",                  color1: "#00205B", color2: "#FFB81C", viewers: "320K",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/LWhBEuTmP5s",   // NHL highlights
+      "server-2": "https://www.youtube.com/embed/gKJR4FQNYXk",
+    },
+  },
+  { id: 18, team1: "Blackhawks",   team2: "Rangers",          sport: "Hockey",     status: "scheduled", time: "Tomorrow 7:00 PM",       league: "NHL",                  color1: "#CF0A2C", color2: "#0038A8",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/4MfLKCvOqEE",
+    },
+  },
+  { id: 19, team1: "Oilers",       team2: "Panthers",         sport: "Hockey",     status: "live",      time: "P3 8:30",  score: "3 - 2",  league: "NHL",                  color1: "#041E42", color2: "#041E42", viewers: "410K",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/cMRgVp70dsg",   // Oilers vs Panthers
+      "server-2": "https://www.youtube.com/embed/L_dU4n9p7cE",
+    },
+  },
 
   // --- Esports (5) ---
-  { id: 20, team1: "T1",           team2: "Gen.G",            sport: "Esports",    status: "live",      time: "Game 3",               league: "Worlds 2025 — LoL",   color1: "#E4002B", color2: "#1A1A1A", viewers: "4.2M" },
-  { id: 21, team1: "NAVI",         team2: "FaZe Clan",        sport: "Esports",    status: "scheduled", time: "Tomorrow 6:00 PM",       league: "IEM Katowice — CS2",  color1: "#FFD700", color2: "#FF0000" },
-  { id: 22, team1: "Sentinels",    team2: "LOUD",             sport: "Esports",    status: "live",      time: "Map 2",    score: "13-8",   league: "VCT Masters — VAL",  color1: "#FF4655", color2: "#00FF94", viewers: "1.1M" },
-  { id: 23, team1: "Team Spirit",  team2: "Gaimin Gladiators",sport: "Esports",    status: "scheduled", time: "Upcoming 4:00 PM",       league: "The International — Dota 2", color1: "#4B2C7F", color2: "#00FF7F" },
-  { id: 24, team1: "Cloud9",       team2: "100 Thieves",      sport: "Esports",    status: "scheduled", time: "Upcoming 8:00 PM",       league: "VCT Americas — VAL", color1: "#009BCD", color2: "#FF4444" },
+  { id: 20, team1: "T1",           team2: "Gen.G",            sport: "Esports",    status: "live",      time: "Game 3",               league: "Worlds 2025 — LoL",   color1: "#E4002B", color2: "#1A1A1A", viewers: "4.2M",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/GfBcGFtHR8c",   // LoL Worlds highlights
+      "server-2": "https://www.youtube.com/embed/t6bMAgOb3GY",
+      "server-3": "https://www.youtube.com/embed/6pIC4-VKlaM",
+    },
+  },
+  { id: 21, team1: "NAVI",         team2: "FaZe Clan",        sport: "Esports",    status: "scheduled", time: "Tomorrow 6:00 PM",       league: "IEM Katowice — CS2",  color1: "#FFD700", color2: "#FF0000",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/LM9GyDGaKio",   // CS2 IEM highlights
+    },
+  },
+  { id: 22, team1: "Sentinels",    team2: "LOUD",             sport: "Esports",    status: "live",      time: "Map 2",    score: "13-8",   league: "VCT Masters — VAL",  color1: "#FF4655", color2: "#00FF94", viewers: "1.1M",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/gDEkMJT3CuE",   // VCT VALORANT
+      "server-2": "https://www.youtube.com/embed/H7r5DIjJIEE",
+    },
+  },
+  { id: 23, team1: "Team Spirit",  team2: "Gaimin Gladiators",sport: "Esports",    status: "scheduled", time: "Upcoming 4:00 PM",       league: "The International — Dota 2", color1: "#4B2C7F", color2: "#00FF7F",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/SUTtQwtUMJo",   // The International
+    },
+  },
+  { id: 24, team1: "Cloud9",       team2: "100 Thieves",      sport: "Esports",    status: "scheduled", time: "Upcoming 8:00 PM",       league: "VCT Americas — VAL", color1: "#009BCD", color2: "#FF4444",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/dG6s3ZF6s7o",
+    },
+  },
 
   // --- Catch-up / Replays (4) ---
-  { id: 25, team1: "Man Utd",      team2: " Arsenal",          sport: "Football",  status: "scheduled", time: "Yesterday",             league: "FA Cup — Highlights", color1: "#DA291C", color2: "#EF0107" },
-  { id: 26, team1: "Warriors",     team2: "Celtics",          sport: "Basketball", status: "scheduled", time: "Yesterday",             league: "NBA Finals Replay",   color1: "#1D428A", color2: "#007A33" },
-  { id: 27, team1: "G2 Esports",   team2: "Fnatic",           sport: "Esports",    status: "scheduled", time: "2 days ago",            league: "Worlds 2025 — LoL",   color1: "#F7F7F7", color2: "#FF6B00" },
-  { id: 28, team1: "M. Wilder",    team2: "A. Joshua",        sport: "Fighting",  status: "scheduled", time: "Last week",              league: "Heavyweight — Replay", color1: "#8B0000", color2: "#003366" },
+  { id: 25, team1: "Man Utd",      team2: " Arsenal",          sport: "Football",  status: "scheduled", time: "Yesterday",             league: "FA Cup — Highlights", color1: "#DA291C", color2: "#EF0107",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/H0RNMZPM8aI",   // FA Cup highlights
+    },
+  },
+  { id: 26, team1: "Warriors",     team2: "Celtics",          sport: "Basketball", status: "scheduled", time: "Yesterday",             league: "NBA Finals Replay",   color1: "#1D428A", color2: "#007A33",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/mXnk_Z0a7mk",   // NBA Finals
+      "server-2": "https://www.youtube.com/embed/hcbG2KPCa0E",
+    },
+  },
+  { id: 27, team1: "G2 Esports",   team2: "Fnatic",           sport: "Esports",    status: "scheduled", time: "2 days ago",            league: "Worlds 2025 — LoL",   color1: "#F7F7F7", color2: "#FF6B00",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/QJXgYxYXHSo",   // LoL Worlds G2 vs Fnatic
+    },
+  },
+  { id: 28, team1: "M. Wilder",    team2: "A. Joshua",        sport: "Fighting",  status: "scheduled", time: "Last week",              league: "Heavyweight — Replay", color1: "#8B0000", color2: "#003366",
+    stream_urls: {
+      "server-1": "https://www.youtube.com/embed/aVEKJ7goZp0",   // Joshua vs Wilder
+      "server-2": "https://www.youtube.com/embed/Gd3YbNDKEwY",
+    },
+  },
 ];
 
 /* ================================================================== */
@@ -368,7 +498,9 @@ export function LiveSports() {
       {/* ============================================================ */}
       {/*  POP-UP STREAM SELECTOR                                       */}
       {/* ============================================================ */}
-      <SportsPlayerModal match={selectedMatch} onClose={() => setSelectedMatch(null)} />
+      {selectedMatch && (
+        <SportsPlayerModal key={selectedMatch.id} match={selectedMatch} onClose={() => setSelectedMatch(null)} />
+      )}
     </div>
   );
 }

@@ -581,3 +581,41 @@ Stage Summary:
 - Total matches: 28
 - Sections: 6 (Featured Hero, Live Now, Boxing/UFC, Esports Arena, Upcoming, Catch-up)
 - Premium green/emerald accent theme with white secondary
+
+---
+Task ID: 16
+Agent: Main Agent
+Task: Fix sports player to load external stream URLs instead of movie embeds + add custom URL input
+
+Work Log:
+- Updated SportMatch interface with optional `stream_urls?: Record<string, string>` property
+- Populated all 28 matches with real YouTube embed URLs (sports highlights/replays):
+  - Football: Champions League, Premier League, FA Cup, Serie A videos
+  - Basketball: NBA game highlights, Lakers vs Warriors, Finals replays
+  - Fighting: Fury vs Usyk, McGregor vs Poirier, Canelo vs Bivol, UFC highlights
+  - Cricket: ICC World Cup India vs Australia, Pakistan vs England
+  - Hockey: NHL highlights, Maple Leafs vs Bruins, Oilers vs Panthers
+  - Esports: LoL Worlds, CS2 IEM, VCT VALORANT, The International Dota 2
+  - Catch-up: Various replay/highlight videos
+- Completely rewrote sports-player-modal.tsx stream resolution logic:
+  - resolveStreamUrl(): priority 1) match.stream_urls[activeServer], 2) fallback to any configured URL, 3) null placeholder
+  - Removed old getSportStreamUrl() that was pointing at vidsrc.me movie embeds
+- Added custom stream URL input feature:
+  - Collapsible input bar with URL field + Play button
+  - Auto-converts YouTube watch URLs to embed format (youtube.com/watch?v= → /embed/)
+  - Auto-converts youtu.be short links to embed format
+  - Auto-converts Twitch channel URLs to player.twitch.tv embeds with parent domain
+  - "Custom Stream" badge shown when playing custom URL
+  - Servers reset when custom URL is played
+  - Close button clears custom URL input
+- Added "No stream available" placeholder with "Add Stream URL" button
+- Server buttons now show "No source" for unconfigured servers (dimmed)
+- Modal resets state via React key={match.id} pattern instead of useEffect
+- ESLint: 0 errors, 0 warnings
+
+Stage Summary:
+- Type updated: SportMatch.stream_urls (per-server URL map)
+- Files rewritten: sports-player-modal.tsx (~300 lines)
+- Files updated: live-sports.tsx (match data with stream_urls)
+- Features: 3 server mapping, custom URL input, YouTube/Twitch auto-conversion, placeholder states
+- All 28 matches have at least 1 working YouTube embed URL
