@@ -16,7 +16,18 @@ export async function GET(request: Request) {
     raw.media_type = mediaType === "tv" ? "tv" : "movie";
     const item = await toMediaItem(raw);
 
-    return NextResponse.json({ item });
+    // For TV shows, also extract season episode counts
+    let seasonEpisodes: Record<number, number> | undefined;
+    if (mediaType === "tv" && (raw as any).seasons) {
+      seasonEpisodes = {};
+      for (const season of (raw as any).seasons) {
+        if (season.season_number > 0) {
+          seasonEpisodes[season.season_number] = season.episode_count;
+        }
+      }
+    }
+
+    return NextResponse.json({ item, seasonEpisodes });
   } catch (error) {
     console.error("Details API error:", error);
     return NextResponse.json({ error: "Failed to fetch details" }, { status: 500 });

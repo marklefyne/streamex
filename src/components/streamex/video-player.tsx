@@ -11,6 +11,7 @@ import {
   MonitorUp,
   AlertTriangle,
   RefreshCw,
+  Subtitles,
 } from "lucide-react";
 import type { CardItem, LiveMediaItem, MediaItem } from "@/lib/mock-data";
 import { getEmbedUrl, SERVERS } from "@/lib/mock-data";
@@ -26,10 +27,11 @@ function isLiveItem(item: CardItem): item is LiveMediaItem {
 interface VideoPlayerProps {
   item: CardItem;
   onClose: () => void;
+  initialServerIndex?: number;
 }
 
-export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
-  const [activeServerIndex, setActiveServerIndex] = useState(0);
+export function VideoPlayer({ item, onClose, initialServerIndex = 0 }: VideoPlayerProps) {
+  const [activeServerIndex, setActiveServerIndex] = useState(initialServerIndex);
   const [season, setSeason] = useState(1);
   const [episode, setEpisode] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,6 +57,10 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
     : isLiveItem(item) && item.numberOfSeasons
       ? item.numberOfSeasons
       : 10;
+
+  // Episode count for current season: use real data if available, otherwise default to 30
+  const seasonEpisodesData = isLiveItem(item) ? item.seasonEpisodes : undefined;
+  const currentSeasonEpisodes = seasonEpisodesData?.[season] || 30;
 
   // Auto-try next server on error (cycle through all providers)
   const tryNextServer = useCallback(() => {
@@ -104,6 +110,12 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
         <div className="flex items-center gap-2 text-xs text-streamex-text-secondary">
           <MonitorUp size={14} />
           <span className="hidden sm:inline">{activeServer.description}</span>
+          {activeServer.hasSubtitles && (
+            <span className="flex items-center gap-0.5 text-emerald-400 text-[10px] font-bold uppercase bg-emerald-400/10 px-1.5 py-0.5 rounded">
+              <Subtitles size={10} />
+              CC
+            </span>
+          )}
         </div>
       </div>
 
@@ -183,6 +195,10 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
             <span className="text-[11px] font-bold uppercase tracking-widest text-streamex-text-secondary">
               Stream Server
             </span>
+            <span className="flex items-center gap-0.5 text-[9px] text-emerald-400/70 bg-emerald-400/10 px-1.5 py-0.5 rounded uppercase font-bold">
+              <Subtitles size={8} />
+              CC = Subtitles
+            </span>
           </div>
           <div className="flex flex-wrap gap-2">
             {SERVERS.map((server, idx) => (
@@ -208,6 +224,9 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
                 >
                   {server.description}
                 </span>
+                {server.hasSubtitles && (
+                  <span className="text-[9px] text-emerald-400 font-bold uppercase">CC</span>
+                )}
               </button>
             ))}
           </div>
@@ -242,7 +261,7 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
                   onChange={(e) => handleEpisodeChange(season, Number(e.target.value))}
                   className="bg-[#1a1a1a] border border-streamex-border rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-streamex-accent cursor-pointer [&>option]:bg-[#1a1a1a] [&>option]:text-white"
                 >
-                  {Array.from({ length: 30 }, (_, i) => (
+                  {Array.from({ length: currentSeasonEpisodes }, (_, i) => (
                     <option key={i + 1} value={i + 1}>
                       Episode {i + 1}
                     </option>

@@ -128,7 +128,7 @@ export default function Home() {
   }, []);
 
   const handleSelectItem = useCallback(async (item: CardItem) => {
-    // For TV shows, fetch details to get real season count
+    // For TV shows, fetch details to get real season count and episode counts
     const isTV = item.type === "TV Series" || item.type === "tv" || item.id.startsWith("tv-");
     if (isTV) {
       try {
@@ -136,7 +136,8 @@ export default function Home() {
         if (res.ok) {
           const data = await res.json();
           if (data.item) {
-            setSelectedItem(data.item as CardItem);
+            const enriched = { ...data.item, seasonEpisodes: data.seasonEpisodes };
+            setSelectedItem(enriched as CardItem);
             setActiveView("detail");
             return;
           }

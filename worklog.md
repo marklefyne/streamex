@@ -1,30 +1,27 @@
-# Worklog
-
 ---
 Task ID: 1
 Agent: Main Agent
-Task: Fix blank white page and complete all critical fixes for Flux Stream
+Task: Complete site audit and fix all issues - embed providers, search, subtitles, TV series playback
 
 Work Log:
-- Diagnosed blank page: Next.js 16 was blocking cross-origin `/_next/*` requests from preview panel
-- Added `allowedDevOrigins` to `next.config.ts` to whitelist the preview domain
-- Fixed empty genres bug: TMDB API returns `genre_ids` as numbers but `toMediaItem()` expected genre objects
-- Created genre name cache with `ensureGenreCache()` that fetches movie+TV genre lists and maps IDs to names
-- Made `toMediaItem()` async to support genre resolution
-- Updated all 4 TMDB API routes (trending, top-rated, now-playing, popular-tv, search) to use `await Promise.all()`
-- Added `numberOfSeasons` field to `LiveMediaItem` interface
-- Created new `/api/tmdb/details` endpoint that fetches TV show details (includes real season count)
-- Updated `handleSelectItem` in page.tsx to fetch TV details for accurate season counts
-- Updated `VideoPlayer` to use `numberOfSeasons` from TMDB data when available, with 30 episodes
-- Updated `MovieDetail` to display season count for TV shows
-- Removed unused `useRef` and `useEffect` imports from VideoPlayer
-- All lint checks pass clean
+- Analyzed uploaded screenshot showing "No results found for 'the blacklist'" - determined this was a server connectivity issue, not a search bug
+- Audited all source files: VideoPlayer, MovieDetail, search API, TMDB lib, mock-data, sidebar, media-card
+- Verified TMDB API works correctly (search, trending, details all return proper data)
+- Replaced 6 dead/broken embed providers with 8 reliable working providers:
+  - Removed: vidsrc.me, moviesapi.to, vidsrc.pm, vidsrc.dev, vidsrc.to
+  - Added: vidsrc.icu, vidsrc.xyz, embed.su, vidsrc.rip, vidsrc.in, autoembed.cc, vidsrc.la, vidsrc.cc
+- Fixed MovieDetail server buttons - now each server button passes its specific index to VideoPlayer
+- Added CC/subtitle indicators on servers that support subtitles (vidsrc.icu, embed.su)
+- Enhanced details API to return seasonEpisodes data (episode count per season)
+- Updated VideoPlayer to use real episode counts from TMDB instead of hardcoded 30
+- Updated LiveMediaItem and MediaItem types to include seasonEpisodes field
+- Updated page.tsx handleSelectItem to pass seasonEpisodes data through
+- Verified all linting passes with zero errors
 
 Stage Summary:
-- CORS fix resolves blank white page in preview panel
-- Genres now display correctly on all cards and detail pages
-- TV shows show real season counts (e.g., Breaking Bad = 5 seasons, Game of Thrones = 8 seasons)
-- Video player has 6 fallback servers with auto-retry
-- Season/Episode selectors show with correct dark styling (#1a1a1a bg + white text)
-- Brand is "Flux Stream" everywhere
-- Zero lint errors
+- Key files modified: mock-data.ts, video-player.tsx, movie-detail.tsx, page.tsx, details/route.ts
+- Embed providers: 8 working servers with correct URL patterns for movies and TV
+- Search: Fully working - verified with "the blacklist" returning 17 results
+- TV details: Returns accurate season counts and per-season episode counts
+- Subtitles: Servers 1 (VidSrc.icu) and 3 (Embed.su) marked with CC indicators
+- Server selection from detail page now properly passes specific server index

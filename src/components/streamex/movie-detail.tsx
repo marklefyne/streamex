@@ -12,10 +12,12 @@ import {
   ListPlus,
   Heart,
   Share2,
+  Subtitles,
 } from "lucide-react";
 import type { CardItem, LiveMediaItem, MediaItem } from "@/lib/mock-data";
 import { VideoPlayer } from "./video-player";
 import { MediaCard } from "./media-card";
+import { SERVERS } from "@/lib/mock-data";
 
 function isLegacyItem(item: CardItem): item is MediaItem {
   return "posterGradient" in item;
@@ -33,15 +35,23 @@ interface MovieDetailProps {
 
 export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
   const [showPlayer, setShowPlayer] = useState(false);
+  const [initialServerIndex, setInitialServerIndex] = useState(0);
   const [isInList, setIsInList] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
 
-  const handlePlay = useCallback(() => {
+  const handlePlay = useCallback((serverIndex: number = 0) => {
+    setInitialServerIndex(serverIndex);
     setShowPlayer(true);
   }, []);
 
   if (showPlayer) {
-    return <VideoPlayer item={item} onClose={() => setShowPlayer(false)} />;
+    return (
+      <VideoPlayer
+        item={item}
+        onClose={() => setShowPlayer(false)}
+        initialServerIndex={initialServerIndex}
+      />
+    );
   }
 
   const isTV = item.type === "TV Series" || item.type === "tv" || item.type === "Anime";
@@ -159,7 +169,7 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
 
               <div className="flex gap-3 flex-wrap">
                 <button
-                  onClick={handlePlay}
+                  onClick={() => handlePlay(0)}
                   className="flex items-center gap-2 px-7 py-3 bg-streamex-accent hover:bg-streamex-accent-hover text-white rounded-lg font-bold text-sm transition-all duration-200 cursor-pointer shadow-lg shadow-streamex-accent/25 hover:shadow-streamex-accent/40 hover:scale-[1.03] active:scale-[0.98]"
                 >
                   <Play size={18} fill="white" />
@@ -202,30 +212,32 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <h3 className="text-sm font-bold text-white mb-3">
-            Choose a Server to Play
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-            {[
-              { name: "Server 1", sub: "VidSrc.me" },
-              { name: "Server 2", sub: "MoviesAPI" },
-              { name: "Server 3", sub: "VidSrc.pm" },
-              { name: "Server 4", sub: "VidSrc.dev" },
-              { name: "Server 5", sub: "VidSrc.to" },
-              { name: "Server 6", sub: "AutoEmbed" },
-            ].map((server) => (
+          <div className="flex items-center gap-3 mb-3">
+            <h3 className="text-sm font-bold text-white">Choose a Server to Play</h3>
+            <span className="flex items-center gap-1 text-[10px] text-streamex-text-secondary px-2 py-0.5 rounded bg-white/5">
+              <Subtitles size={10} />
+              Servers 1 &amp; 3 have subtitles
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2">
+            {SERVERS.map((server, idx) => (
               <button
-                key={server.name}
-                onClick={handlePlay}
-                className="flex flex-col items-center gap-1 px-4 py-3 rounded-lg bg-streamex-surface hover:bg-streamex-surface-hover border border-streamex-border hover:border-streamex-accent/50 text-white transition-all duration-200 cursor-pointer group"
+                key={server.id}
+                onClick={() => handlePlay(idx)}
+                className="flex flex-col items-center gap-1 px-3 py-3 rounded-lg bg-streamex-surface hover:bg-streamex-surface-hover border border-streamex-border hover:border-streamex-accent/50 text-white transition-all duration-200 cursor-pointer group relative"
               >
+                {server.hasSubtitles && (
+                  <span className="absolute top-1 right-1 text-[8px] text-emerald-400 bg-emerald-400/10 px-1 rounded font-bold uppercase">
+                    CC
+                  </span>
+                )}
                 <Play
                   size={16}
                   className="text-streamex-text-secondary group-hover:text-streamex-accent transition-colors"
                 />
                 <span className="text-xs font-semibold">{server.name}</span>
                 <span className="text-[10px] text-streamex-text-secondary">
-                  {server.sub}
+                  {server.description}
                 </span>
               </button>
             ))}
