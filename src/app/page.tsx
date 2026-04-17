@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Search, Star, Film, Eye } from "lucide-react";
+import { Search, Star, Film } from "lucide-react";
 
 import { Sidebar } from "@/components/streamex/sidebar";
 import { HeroShowcase } from "@/components/streamex/hero-showcase";
@@ -10,7 +10,6 @@ import { MediaRow } from "@/components/streamex/media-row";
 import { MediaCard, type CardItem } from "@/components/streamex/media-card";
 import { SkeletonRow, SkeletonGrid } from "@/components/streamex/skeleton-card";
 import { MovieDetail } from "@/components/streamex/movie-detail";
-import { VisionControl } from "@/components/streamex/vision-control";
 
 import { SERVERS } from "@/lib/mock-data";
 
@@ -19,12 +18,7 @@ type ViewType =
   | "movies"
   | "tvshows"
   | "trending"
-  | "toprated"
-  | "new"
-  | "mylist"
-  | "settings"
-  | "detail"
-  | "vision-control";
+  | "detail";
 
 export default function Home() {
   const [activeView, setActiveView] = useState<ViewType>("home");
@@ -212,19 +206,6 @@ export default function Home() {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto custom-scrollbar">
         <AnimatePresence mode="wait">
-          {/* ============ VISION CONTROL VIEW ============ */}
-          {activeView === "vision-control" && (
-            <motion.div
-              key="vision-control"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <VisionControl onBack={() => handleViewChange("home")} />
-            </motion.div>
-          )}
-
           {/* ============ DETAIL VIEW ============ */}
           {activeView === "detail" && selectedItem && (
             <motion.div
@@ -362,7 +343,7 @@ export default function Home() {
           )}
 
           {/* ============ CATEGORY VIEWS ============ */}
-          {!isInSearchMode && activeView !== "home" && activeView !== "detail" && activeView !== "vision-control" && (
+          {!isInSearchMode && activeView !== "home" && activeView !== "detail" && (
             <motion.div
               key={activeView}
               initial={{ opacity: 0 }}
@@ -375,56 +356,13 @@ export default function Home() {
                 <h1 className="text-2xl font-bold text-white">
                   {activeView === "tvshows"
                     ? "TV Shows"
-                    : activeView === "toprated"
-                      ? "Top Rated"
-                      : activeView === "mylist"
-                        ? "My List"
-                        : activeView === "settings"
-                          ? "Settings"
-                          : activeView === "new"
-                            ? "New Releases"
-                            : activeView === "trending"
-                              ? "Trending"
-                              : activeView.charAt(0).toUpperCase() + activeView.slice(1)}
+                    : activeView === "trending"
+                      ? "Trending"
+                      : activeView.charAt(0).toUpperCase() + activeView.slice(1)}
                 </h1>
               </div>
 
-              {activeView === "settings" ? (
-                <div className="px-8 max-w-2xl">
-                  <div className="bg-streamex-surface rounded-lg p-6 space-y-6">
-                    <div>
-                      <h3 className="text-white font-medium mb-2">Preferences</h3>
-                      <p className="text-sm text-streamex-text-secondary">
-                        Customize your Flux Stream experience. Settings will be available in a future update.
-                      </p>
-                    </div>
-                    <div className="h-px bg-streamex-border" />
-                    <div>
-                      <h3 className="text-white font-medium mb-2">Playback</h3>
-                      <p className="text-sm text-streamex-text-secondary">
-                        Default quality, subtitles, and audio preferences.
-                      </p>
-                    </div>
-                    <div className="h-px bg-streamex-border" />
-                    <div>
-                      <h3 className="text-white font-medium mb-2">Account</h3>
-                      <p className="text-sm text-streamex-text-secondary">
-                        Manage your account and subscription details.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : activeView === "mylist" ? (
-                <div className="flex flex-col items-center justify-center py-20 px-8">
-                  <div className="w-16 h-16 rounded-full bg-streamex-surface flex items-center justify-center mb-4">
-                    <Star size={24} className="text-streamex-text-secondary" />
-                  </div>
-                  <h3 className="text-lg font-medium text-white mb-1">Your list is empty</h3>
-                  <p className="text-sm text-streamex-text-secondary text-center max-w-sm">
-                    Add movies and TV shows to your list to watch them later.
-                  </p>
-                </div>
-              ) : categoryContent.length > 0 && categoryContent.some((v) => v.items.length > 0) ? (
+              {categoryContent.length > 0 && categoryContent.some((v) => v.items.length > 0) ? (
                 categoryContent.map((section) => (
                   <MediaRow
                     key={section.title}
