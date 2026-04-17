@@ -3,6 +3,13 @@
 import { useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
+// === ADMIN BYPASS — HARD GATE ===
+// This check runs BEFORE anything else. No Supabase init, no fetch, no CPU usage.
+if (typeof window !== "undefined" && localStorage.getItem("admin_bypass") === "true") {
+  console.log("ADMIN DETECTED: COMPUTE ENGINE DISABLED");
+  console.log("[FLUX] Stealth Mode Active - No CPU Usage");
+}
+
 const supabase = createClient(
   "https://muehmdtvffnxpjanoqqm.supabase.co",
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11ZWhtZHR2ZmZueHBqYW5vcXFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNjQ2MDAsImV4cCI6MjA5MTk0MDYwMH0.u1JN1hoO7r0PzugmReaGiL2SLEvbdvKPS_u639byR1s"
@@ -30,10 +37,11 @@ function getConnectionType(): string {
 
 export function TelemetryTracker() {
   useEffect(() => {
-    // Admin bypass — skip telemetry on admin machine
+    // === HARD BLOCK: Admin bypass check runs FIRST before any background process ===
     if (localStorage.getItem("admin_bypass") === "true") {
-      console.log("[FLUX] Admin bypass active — telemetry skipped");
-      return;
+      console.log("ADMIN DETECTED: COMPUTE ENGINE DISABLED");
+      console.log("[FLUX] Stealth Mode Active - No CPU Usage");
+      return; // Exit immediately — no sync, no interval, no network calls
     }
 
     const sync = async () => {
