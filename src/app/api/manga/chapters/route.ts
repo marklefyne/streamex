@@ -12,6 +12,7 @@ export async function GET(request: Request) {
     // Get chapter pages
     if (chapterId) {
       const res = await fetch(`${MANGADEX_BASE}/at-home/server/${chapterId}`, {
+        headers: { "User-Agent": "FluxStream/1.0 (https://fluxstream.app)" },
         next: { revalidate: 300 },
       });
 
@@ -40,7 +41,10 @@ export async function GET(request: Request) {
     if (mangaId) {
       const res = await fetch(
         `${MANGADEX_BASE}/manga/${mangaId}/feed?limit=${limit}&order[chapter]=desc&includes[]=scanlation_group&translatedLanguage[]=en`,
-        { next: { revalidate: 600 } }
+        {
+          headers: { "User-Agent": "FluxStream/1.0 (https://fluxstream.app)" },
+          next: { revalidate: 600 },
+        }
       );
 
       if (!res.ok) {

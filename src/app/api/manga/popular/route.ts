@@ -8,24 +8,30 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get("limit") || "20");
     const page = parseInt(searchParams.get("page") || "1");
 
-    // Fetch popular manga from MangaDex
-    const res = await fetch(`${MANGADEX_BASE}/manga`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        limit,
-        offset: (page - 1) * limit,
-        includes: ["author", "cover_art"],
-        hasAvailableChapters: true,
-        contentRating: ["safe", "suggestive"],
-        publicationDemographic: ["shounen", "shoujo", "seinen", "josei"],
-        order: { followedCount: "desc" },
-      }),
+    // Use GET with query params — MangaDex POST has stricter validation
+    const params = new URLSearchParams({
+      limit: String(limit),
+      offset: String((page - 1) * limit),
+      "includes[]": "author",
+      "includes[]": "cover_art",
+      "hasAvailableChapters": "true",
+      "contentRating[]": "safe",
+      "contentRating[]": "suggestive",
+      "order[followedCount]": "desc",
+      "availableTranslatedLanguage[]": "en",
+    });
+
+    const res = await fetch(`${MANGADEX_BASE}/manga?${params.toString()}`, {
+      headers: {
+        "User-Agent": "FluxStream/1.0 (https://fluxstream.app)",
+      },
       next: { revalidate: 3600 },
     });
 
     if (!res.ok) {
-      return NextResponse.json({ results: [], total: 0, page, error: "Failed to fetch" }, { status: 500 });
+      const errText = await res.text().catch(() => "");
+      console.error("MangaDex error:", res.status, errText);
+      return NextResponse.json({ results: [], total: 0, page, error: "Failed to fetch from MangaDex" }, { status: 500 });
     }
 
     const data = await res.json();

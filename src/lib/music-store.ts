@@ -35,6 +35,7 @@ interface MusicPlayerState {
   seekTo: (time: number) => void;
   addToQueue: (track: MusicTrack) => void;
   clearQueue: () => void;
+  closePlayer: () => void;
 }
 
 export const useMusicStore = create<MusicPlayerState>((set, get) => ({
@@ -112,4 +113,13 @@ export const useMusicStore = create<MusicPlayerState>((set, get) => ({
   },
 
   clearQueue: () => set({ queue: [], queueIndex: 0 }),
+
+  closePlayer: () => set({
+    currentTrack: null,
+    queue: [],
+    queueIndex: 0,
+    isPlaying: false,
+    currentTime: 0,
+    isLoading: false,
+  }),
 }));

@@ -240,7 +240,10 @@ export function Sidebar({
       }`}
     >
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 py-5">
+      <button
+        onClick={() => handleNavClick("home")}
+        className="flex items-center gap-2.5 px-4 py-5 w-full cursor-pointer hover:opacity-80 transition-opacity"
+      >
         <div className="w-8 h-8 rounded-lg bg-streamex-accent flex items-center justify-center flex-shrink-0">
           <span className="text-white font-black text-sm">F</span>
         </div>
@@ -249,7 +252,7 @@ export function Sidebar({
             Flux<span className="text-streamex-accent">Stream</span>
           </span>
         )}
-      </div>
+      </button>
 
       {/* Search — always visible at top */}
       {!isCollapsed && (

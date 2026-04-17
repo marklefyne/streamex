@@ -25,17 +25,23 @@ export async function GET(request: Request) {
       return NextResponse.json({ results: [] });
     }
 
-    // Search manga on MangaDex
-    const res = await fetch(`${MANGADEX_BASE}/manga`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: query,
-        limit,
-        includes: ["author", "cover_art"],
-        hasAvailableChapters: true,
-        contentRating: ["safe", "suggestive"],
-      }),
+    // Use GET with query params for MangaDex search
+    const params = new URLSearchParams({
+      limit: String(limit),
+      title: query,
+      "includes[]": "author",
+      "includes[]": "cover_art",
+      "hasAvailableChapters": "true",
+      "contentRating[]": "safe",
+      "contentRating[]": "suggestive",
+      "availableTranslatedLanguage[]": "en",
+      "order[relevance]": "desc",
+    });
+
+    const res = await fetch(`${MANGADEX_BASE}/manga?${params.toString()}`, {
+      headers: {
+        "User-Agent": "FluxStream/1.0 (https://fluxstream.app)",
+      },
     });
 
     if (!res.ok) {
@@ -44,14 +50,6 @@ export async function GET(request: Request) {
 
     const data = await res.json();
     const mangaList = data.data || [];
-
-    // Batch fetch covers
-    const coverIds = mangaList
-      .map((m: any) => {
-        const coverRel = m.relationships?.find((r: any) => r.type === "cover_art");
-        return { mangaId: m.id, coverId: coverRel?.id };
-      })
-      .filter((c: any) => c.coverId);
 
     const results: MangaDexItem[] = await Promise.all(
       mangaList.map(async (m: any) => {
@@ -68,7 +66,6 @@ export async function GET(request: Request) {
         const status = m.attributes?.status || "unknown";
         const contentRating = m.attributes?.contentRating || "safe";
 
-        // Get cover
         let coverUrl = "";
         const coverRel = m.relationships?.find((r: any) => r.type === "cover_art");
         if (coverRel?.id) {

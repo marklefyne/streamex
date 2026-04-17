@@ -140,6 +140,8 @@ export default function Home() {
   const [trendingMoviesItems, setTrendingMoviesItems] = useState<CardItem[]>([]);
   const [trendingTVItems, setTrendingTVItems] = useState<CardItem[]>([]);
   const [heroItem, setHeroItem] = useState<CardItem | null>(null);
+  const heroRotationRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const heroIndexRef = useRef(0);
 
   // Stores
   const favorites = useFavoritesStore((s) => s.favorites);
@@ -221,6 +223,20 @@ export default function Home() {
     };
     fetchAllData();
   }, []);
+
+  // Auto-rotate hero every 15 seconds
+  useEffect(() => {
+    heroRotationRef.current = setInterval(() => {
+      const heroPool = trendingItems.filter((m) => m.backdropImage);
+      if (heroPool.length > 1) {
+        heroIndexRef.current = (heroIndexRef.current + 1) % heroPool.length;
+        setHeroItem(heroPool[heroIndexRef.current]);
+      }
+    }, 15000);
+    return () => {
+      if (heroRotationRef.current) clearInterval(heroRotationRef.current);
+    };
+  }, [trendingItems]);
 
   // Search handler
   const handleSearchChange = useCallback((value: string) => {
@@ -413,9 +429,6 @@ export default function Home() {
                   <div className="space-y-2 py-6">
                     {historyCards.length > 0 && (
                       <MediaRow title="Continue Watching" icon={<Play size={16} />} items={historyCards.slice(0, 8)} onSelect={handleSelectItem} />
-                    )}
-                    {trendingViewsCards.length > 0 && (
-                      <MediaRow title="Most Watched Now" icon={<Flame size={16} />} items={trendingViewsCards.slice(0, 10)} onSelect={handleSelectItem} />
                     )}
                     {trendingMoviesItems.length > 0 && (
                       <MediaRow title="Trending Movies" icon={<Flame size={16} />} items={trendingMoviesItems} onSelect={handleSelectItem} />

@@ -30,6 +30,7 @@ export function MusicMiniPlayer() {
   const setVolume = useMusicStore((s) => s.setVolume);
   const pause = useMusicStore((s) => s.pause);
   const seekTo = useMusicStore((s) => s.seekTo);
+  const closePlayer = useMusicStore((s) => s.closePlayer);
 
   // ---------- persistent audio element ----------
   useEffect(() => {
@@ -135,8 +136,8 @@ export function MusicMiniPlayer() {
       audio.pause();
       audio.src = "";
     }
-    pause();
-  }, [pause]);
+    closePlayer();
+  }, [closePlayer]);
 
   const handleProgressClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
