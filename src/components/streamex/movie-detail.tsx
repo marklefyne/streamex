@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Play,
   Star,
@@ -9,10 +9,13 @@ import {
   Tv,
   Calendar,
   ChevronLeft,
+  ChevronDown,
   Heart,
   Share2,
   Subtitles,
   Zap,
+  Clapperboard,
+  X,
 } from "lucide-react";
 import type { CardItem, LiveMediaItem, MediaItem } from "@/lib/mock-data";
 import { VideoPlayer } from "./video-player";
@@ -35,9 +38,24 @@ interface MovieDetailProps {
   onMiniPlayer?: (item: CardItem, serverIndex: number, season: number, episode: number) => void;
 }
 
+interface TrailerItem {
+  key: string;
+  name: string;
+  embedUrl: string;
+}
+
 export function MovieDetail({ item, similarItems, onBack, onMiniPlayer }: MovieDetailProps) {
   const [showPlayer, setShowPlayer] = useState(false);
   const [initialServerIndex, setInitialServerIndex] = useState(0);
+
+  // Trailer state
+  const [showTrailer, setShowTrailer] = useState(false);
+  const [trailerUrl, setTrailerUrl] = useState("");
+  const [trailerName, setTrailerName] = useState("");
+  const [allTrailers, setAllTrailers] = useState<TrailerItem[]>([]);
+  const [trailerLoading, setTrailerLoading] = useState(false);
+  const [showTrailerDropdown, setShowTrailerDropdown] = useState(false);
+  const trailerDropdownRef = useRef<HTMLDivElement>(null);
 
   const isFav = useFavoritesStore((s) => s.isFavorite(item.tmdb_id));
   const toggleFavorite = useFavoritesStore((s) => s.toggleFavorite);
@@ -79,6 +97,52 @@ export function MovieDetail({ item, similarItems, onBack, onMiniPlayer }: MovieD
     };
     toggleFavorite(favItem);
   }, [item, toggleFavorite]);
+
+  // Fetch trailer when modal opens
+  useEffect(() => {
+    if (!showTrailer) return;
+    const mediaType = (item.type === "TV Series" || item.type === "tv" || item.type === "Anime") ? "tv" : "movie";
+    const tmdbId = item.tmdb_id;
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/tmdb/trailer?tmdb_id=${tmdbId}&type=${mediaType}`);
+        const data = await res.json();
+        const trailer = data?.trailer;
+        const trailers: TrailerItem[] = data?.allTrailers || [];
+        if (trailer) {
+          setTrailerUrl(trailer.embedUrl || `https://www.youtube.com/embed/${trailer.key}?autoplay=1&rel=0`);
+          setTrailerName(trailer.name || "Trailer");
+          setAllTrailers(trailers);
+        } else if (trailers.length > 0) {
+          setTrailerUrl(trailers[0].embedUrl || `https://www.youtube.com/embed/${trailers[0].key}?autoplay=1&rel=0`);
+          setTrailerName(trailers[0].name || "Trailer");
+          setAllTrailers(trailers);
+        }
+      } catch {
+        // silent fail
+      }
+      setTrailerLoading(false);
+    })();
+  }, [showTrailer, item.tmdb_id, item.type]);
+
+  // Close trailer dropdown on outside click
+  useEffect(() => {
+    if (!showTrailerDropdown) return;
+    const handleClick = (e: MouseEvent) => {
+      if (trailerDropdownRef.current && !trailerDropdownRef.current.contains(e.target as Node)) {
+        setShowTrailerDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showTrailerDropdown]);
+
+  const handleSwitchTrailer = useCallback((trailer: TrailerItem) => {
+    setTrailerUrl(trailer.embedUrl || `https://www.youtube.com/embed/${trailer.key}?autoplay=1&rel=0`);
+    setTrailerName(trailer.name || "Trailer");
+    setShowTrailerDropdown(false);
+  }, []);
 
   if (showPlayer) {
     return (
@@ -214,6 +278,13 @@ export function MovieDetail({ item, similarItems, onBack, onMiniPlayer }: MovieD
                   Play Now
                 </button>
                 <button
+                  onClick={() => { setTrailerUrl(""); setTrailerName(""); setAllTrailers([]); setTrailerLoading(true); setShowTrailer(true); }}
+                  className="flex items-center gap-2 px-5 py-3 bg-white/10 hover:bg-white/15 border border-white/20 hover:border-white/30 text-white rounded-lg font-semibold text-sm transition-all duration-200 cursor-pointer backdrop-blur-sm hover:scale-[1.03] active:scale-[0.98]"
+                >
+                  <Clapperboard size={16} />
+                  Trailer
+                </button>
+                <button
                   onClick={handleToggleFavorite}
                   className={`flex items-center gap-2 px-5 py-3 rounded-lg font-semibold text-sm transition-all duration-200 cursor-pointer border ${
                     isFav
@@ -298,6 +369,115 @@ export function MovieDetail({ item, similarItems, onBack, onMiniPlayer }: MovieD
           </div>
         </motion.div>
       )}
+
+      {/* Trailer Modal */}
+      <AnimatePresence>
+        {showTrailer && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {/* Dark overlay */}
+            <motion.div
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              onClick={() => setShowTrailer(false)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            />
+
+            {/* Modal content */}
+            <motion.div
+              className="relative z-10 w-full max-w-3xl bg-streamex-surface rounded-xl border border-streamex-border shadow-2xl shadow-black/60 overflow-hidden"
+              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 20 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-streamex-border">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Clapperboard size={16} className="text-streamex-accent flex-shrink-0" />
+                  <h3 className="text-sm font-bold text-white truncate">{trailerName || "Loading trailer..."}</h3>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Switch Trailer Dropdown */}
+                  {allTrailers.length > 1 && (
+                    <div className="relative" ref={trailerDropdownRef}>
+                      <button
+                        onClick={() => setShowTrailerDropdown(!showTrailerDropdown)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/5 border border-streamex-border text-xs text-streamex-text-secondary hover:text-white hover:border-white/20 transition-all cursor-pointer"
+                      >
+                        Switch Trailer
+                        <ChevronDown size={12} className={`transition-transform duration-200 ${showTrailerDropdown ? "rotate-180" : ""}`} />
+                      </button>
+                      <AnimatePresence>
+                        {showTrailerDropdown && (
+                          <motion.div
+                            className="absolute right-0 top-full mt-1 w-64 max-h-60 overflow-y-auto bg-streamex-surface border border-streamex-border rounded-lg shadow-xl shadow-black/50 z-50"
+                            initial={{ opacity: 0, y: -6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -6 }}
+                            transition={{ duration: 0.15 }}
+                          >
+                            {allTrailers.map((t, idx) => (
+                              <button
+                                key={t.key}
+                                onClick={() => handleSwitchTrailer(t)}
+                                className={`w-full flex items-center gap-2 px-3 py-2.5 text-left text-xs transition-colors cursor-pointer ${
+                                  trailerUrl.includes(t.key)
+                                    ? "bg-streamex-accent/10 text-streamex-accent"
+                                    : "text-streamex-text-secondary hover:text-white hover:bg-white/5"
+                                } ${idx < allTrailers.length - 1 ? "border-b border-streamex-border/50" : ""}`}
+                              >
+                                <Play size={10} className="flex-shrink-0" />
+                                <span className="truncate">{t.name}</span>
+                              </button>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                  {/* Close button */}
+                  <button
+                    onClick={() => setShowTrailer(false)}
+                    className="p-2 rounded-lg bg-white/5 border border-streamex-border text-streamex-text-secondary hover:text-white hover:border-white/20 transition-all cursor-pointer"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Video iframe */}
+              <div className="relative w-full aspect-video bg-black">
+                {trailerLoading ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                    <div className="w-8 h-8 border-2 border-streamex-accent/30 border-t-streamex-accent rounded-full animate-spin" />
+                    <span className="text-xs text-streamex-text-secondary">Loading trailer...</span>
+                  </div>
+                ) : trailerUrl ? (
+                  <iframe
+                    src={trailerUrl}
+                    title={trailerName}
+                    className="absolute inset-0 w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                    <Clapperboard size={32} className="text-streamex-text-secondary/40" />
+                    <span className="text-sm text-streamex-text-secondary">No trailer available</span>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <footer className="border-t border-streamex-border px-8 py-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-streamex-text-secondary">

@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Search, Star, Film, Clock, Heart, Trash2, ShieldAlert, X,
-  Flame, Sparkles, Trophy, Music, BookOpen, Tv, Plus, Play,
+  Flame, Sparkles, Trophy, Music, BookOpen, Tv, Play,
+  Loader2, Disc3, Clapperboard,
 } from "lucide-react";
 
 import { Sidebar } from "@/components/streamex/sidebar";
@@ -15,6 +16,9 @@ import { SkeletonRow, SkeletonGrid } from "@/components/streamex/skeleton-card";
 import { MovieDetail } from "@/components/streamex/movie-detail";
 import { MiniPlayer } from "@/components/streamex/mini-player";
 import { LiveSports } from "@/components/streamex/live-sports";
+import { MusicPage } from "@/components/streamex/music-page";
+import { MangaPage } from "@/components/streamex/manga-page";
+import { MusicMiniPlayer } from "@/components/streamex/music-mini-player";
 
 import { useFavoritesStore, type FavoriteItem } from "@/lib/favorites-store";
 import { useHistoryStore, type HistoryEntry } from "@/lib/history-store";
@@ -33,6 +37,27 @@ type ViewType =
   | "history"
   | "dmca"
   | "detail";
+
+// Universal search result types
+interface MusicSearchResult {
+  id: string;
+  trackName: string;
+  artistName: string;
+  collectionName: string;
+  artworkUrl100: string;
+  previewUrl: string;
+  primaryGenreName: string;
+}
+
+interface MangaSearchResult {
+  id: string;
+  title: string;
+  description: string;
+  coverUrl: string;
+  artist: string;
+  status: string;
+  tags: string[];
+}
 
 // Shared footer
 function SiteFooter() {
@@ -92,6 +117,8 @@ export default function Home() {
   const [activeView, setActiveView] = useState<ViewType>("home");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<CardItem[]>([]);
+  const [musicSearchResults, setMusicSearchResults] = useState<MusicSearchResult[]>([]);
+  const [mangaSearchResults, setMangaSearchResults] = useState<MangaSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<CardItem | null>(null);
@@ -204,19 +231,29 @@ export default function Home() {
     if (value.trim().length > 0) {
       setIsSearching(true);
       searchTimerRef.current = setTimeout(async () => {
+        const q = searchQueryRef.current.trim();
         try {
-          const res = await fetch(`/api/tmdb/search?query=${encodeURIComponent(searchQueryRef.current.trim())}`);
-          if (res.ok) { const data = await res.json(); setSearchResults(data.items || []); }
-        } catch { setSearchResults([]); }
+          const [moviesRes, musicRes, mangaRes] = await Promise.all([
+            fetch(`/api/tmdb/search?query=${encodeURIComponent(q)}`),
+            fetch(`/api/music/search?query=${encodeURIComponent(q)}&limit=6`).catch(() => null),
+            fetch(`/api/manga/search?query=${encodeURIComponent(q)}&limit=6`).catch(() => null),
+          ]);
+          if (moviesRes.ok) { const data = await moviesRes.json(); setSearchResults(data.items || []); }
+          else { setSearchResults([]); }
+          if (musicRes?.ok) { const data = await musicRes.json(); setMusicSearchResults(data.tracks || []); }
+          else { setMusicSearchResults([]); }
+          if (mangaRes?.ok) { const data = await mangaRes.json(); setMangaSearchResults(data.results || []); }
+          else { setMangaSearchResults([]); }
+        } catch { setSearchResults([]); setMusicSearchResults([]); setMangaSearchResults([]); }
         finally { setIsSearching(false); searchTimerRef.current = null; }
       }, 600);
     } else {
-      setSearchResults([]); setIsSearching(false);
+      setSearchResults([]); setMusicSearchResults([]); setMangaSearchResults([]); setIsSearching(false);
     }
   }, []);
 
   const handleViewChange = useCallback((view: string) => {
-    setSearchQuery(""); setSearchResults([]); setIsSearching(false);
+    setSearchQuery(""); setSearchResults([]); setMusicSearchResults([]); setMangaSearchResults([]); setIsSearching(false);
     searchQueryRef.current = "";
     if (searchTimerRef.current) { clearTimeout(searchTimerRef.current); searchTimerRef.current = null; }
 
@@ -414,29 +451,118 @@ export default function Home() {
                   <h1 className="text-2xl font-bold text-white">Search Results</h1>
                 </div>
                 <p className="text-sm text-streamex-text-secondary">
-                  {isSearching ? "Searching..." : searchResults.length > 0 ? `Found ${searchResults.length} result${searchResults.length !== 1 ? "s" : ""} for "${searchQuery}"` : searchQuery.trim() ? `No results for "${searchQuery}"` : "Start typing to search..."}
+                  {isSearching ? "Searching all categories..." : `Searching for "${searchQuery}"`}
                 </p>
               </div>
+
               {isSearching ? (
                 <SkeletonGrid count={12} />
-              ) : searchResults.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 px-8">
-                  {searchResults.map((item, i) => (
-                    <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.04 }}>
-                      <MediaCard item={item} index={i} onSelect={handleSelectItem} />
-                    </motion.div>
-                  ))}
-                </div>
               ) : (
-                searchQuery.trim() && (
-                  <div className="flex flex-col items-center justify-center py-20 px-8">
-                    <div className="w-16 h-16 rounded-full bg-white/[0.03] flex items-center justify-center mb-4">
-                      <Search size={24} className="text-streamex-text-secondary/30" />
+                <div className="space-y-8">
+                  {/* Movies & TV Section */}
+                  {searchResults.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 px-8 mb-4">
+                        <Film size={16} className="text-streamex-accent" />
+                        <h2 className="text-base font-bold text-white">Found in Movies & TV</h2>
+                        <span className="text-xs text-streamex-text-secondary bg-white/[0.04] px-2 py-0.5 rounded-md">{searchResults.length}</span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 px-8">
+                        {searchResults.slice(0, 12).map((item, i) => (
+                          <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.04 }}>
+                            <MediaCard item={item} index={i} onSelect={handleSelectItem} />
+                          </motion.div>
+                        ))}
+                      </div>
                     </div>
-                    <h3 className="text-lg font-medium text-white mb-1">No results found</h3>
-                    <p className="text-sm text-streamex-text-secondary text-center max-w-sm">Try a different title or keyword.</p>
-                  </div>
-                )
+                  )}
+
+                  {/* Music Section */}
+                  {musicSearchResults.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 px-8 mb-4">
+                        <Music size={16} className="text-purple-400" />
+                        <h2 className="text-base font-bold text-white">Found in Music</h2>
+                        <span className="text-xs text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-md">{musicSearchResults.length}</span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 px-8">
+                        {musicSearchResults.slice(0, 6).map((track, i) => (
+                          <motion.div
+                            key={track.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: i * 0.04 }}
+                            className="group cursor-pointer"
+                          >
+                            <div className="relative aspect-square rounded-xl overflow-hidden bg-white/[0.04] ring-1 ring-white/[0.06] group-hover:ring-purple-500/30 transition-all">
+                              <img src={track.artworkUrl100?.replace(/\/\d+x\d+/, "/300x300") || ""} alt={track.trackName} className="w-full h-full object-cover" loading="lazy" />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                              <div className="absolute bottom-0 left-0 right-0 p-2.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <p className="text-[11px] font-semibold text-white truncate">{track.trackName}</p>
+                                <p className="text-[10px] text-white/60 truncate">{track.artistName}</p>
+                              </div>
+                              <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-purple-500/80 text-[8px] font-bold text-white">MUSIC</div>
+                            </div>
+                            <p className="text-xs font-medium text-white truncate mt-2 px-0.5">{track.trackName}</p>
+                            <p className="text-[11px] text-streamex-text-secondary truncate px-0.5">{track.artistName}</p>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Manga Section */}
+                  {mangaSearchResults.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 px-8 mb-4">
+                        <BookOpen size={16} className="text-amber-400" />
+                        <h2 className="text-base font-bold text-white">Found in Manga</h2>
+                        <span className="text-xs text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-md">{mangaSearchResults.length}</span>
+                      </div>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 px-8">
+                        {mangaSearchResults.slice(0, 6).map((manga, i) => (
+                          <motion.div
+                            key={manga.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: i * 0.04 }}
+                            className="group cursor-pointer"
+                            onClick={() => { setSearchQuery(""); setSearchResults([]); setMusicSearchResults([]); setMangaSearchResults([]); setActiveView("manga"); }}
+                          >
+                            <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-white/[0.04] ring-1 ring-white/[0.06] group-hover:ring-amber-500/30 transition-all">
+                              {manga.coverUrl ? (
+                                <img src={manga.coverUrl} alt={manga.title} className="w-full h-full object-cover" loading="lazy" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center"><BookOpen size={24} className="text-white/10" /></div>
+                              )}
+                              <div className="absolute top-1.5 left-1.5">
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${manga.status === "ongoing" ? "bg-emerald-500/80" : "bg-blue-500/80"} text-white`}>{manga.status}</span>
+                              </div>
+                              <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-amber-500/80 text-[8px] font-bold text-white">MANGA</div>
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                              <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <p className="text-[11px] font-semibold text-white truncate">{manga.title}</p>
+                              </div>
+                            </div>
+                            <p className="text-xs font-medium text-white truncate mt-1.5 px-0.5 group-hover:text-amber-400 transition-colors">{manga.title}</p>
+                            <p className="text-[10px] text-streamex-text-secondary truncate px-0.5">{manga.artist}</p>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No results at all */}
+                  {searchResults.length === 0 && musicSearchResults.length === 0 && mangaSearchResults.length === 0 && searchQuery.trim() && (
+                    <div className="flex flex-col items-center justify-center py-20 px-8">
+                      <div className="w-16 h-16 rounded-full bg-white/[0.03] flex items-center justify-center mb-4">
+                        <Search size={24} className="text-streamex-text-secondary/30" />
+                      </div>
+                      <h3 className="text-lg font-medium text-white mb-1">No results found</h3>
+                      <p className="text-sm text-streamex-text-secondary text-center max-w-sm">Searched Movies, Music, and Manga. Try a different keyword.</p>
+                    </div>
+                  )}
+                </div>
               )}
               <SiteFooter />
             </motion.div>
@@ -518,14 +644,14 @@ export default function Home() {
           {/* ============ MANGA VIEW ============ */}
           {!isInSearchMode && activeView === "manga" && (
             <motion.div key="manga" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-              <ComingSoonView title="Manga" icon={BookOpen} description="Your manga library is on the way. Stay tuned!" />
+              <MangaPage />
             </motion.div>
           )}
 
           {/* ============ MUSIC VIEW ============ */}
           {!isInSearchMode && activeView === "music" && (
             <motion.div key="music" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-              <ComingSoonView title="Music" icon={Music} description="Music videos and concerts coming soon!" />
+              <MusicPage />
             </motion.div>
           )}
 
@@ -637,6 +763,9 @@ export default function Home() {
           />
         )}
       </AnimatePresence>
+
+      {/* Global Music Mini Player */}
+      <MusicMiniPlayer />
     </div>
   );
 }
