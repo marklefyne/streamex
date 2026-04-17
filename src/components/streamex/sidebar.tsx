@@ -102,11 +102,11 @@ export function Sidebar({
       {/* Logo */}
       <div className="flex items-center gap-2 px-4 py-5 border-b border-streamex-border">
         <div className="w-8 h-8 rounded-lg bg-streamex-accent flex items-center justify-center flex-shrink-0">
-          <span className="text-white font-black text-sm">S</span>
+          <span className="text-white font-black text-sm">F</span>
         </div>
         {!isCollapsed && (
           <span className="text-lg font-black text-white tracking-tight">
-            Stream<span className="text-streamex-accent">EX</span>
+            Flux<span className="text-streamex-accent"> Stream</span>
           </span>
         )}
       </div>

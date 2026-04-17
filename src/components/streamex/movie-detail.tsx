@@ -201,11 +201,11 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
             {[
-              { name: "Server 1", sub: "VidSrc" },
-              { name: "Server 2", sub: "VidSrc CC" },
-              { name: "Server 3", sub: "AutoEmbed" },
-              { name: "Server 4", sub: "MoviesAPI" },
-              { name: "Server 5", sub: "VidSrc XYZ" },
+              { name: "Server 1", sub: "VidSrc.to" },
+              { name: "Server 2", sub: "VidSrc.me" },
+              { name: "Server 3", sub: "2Embed.cc" },
+              { name: "Server 4", sub: "VidSrc.cc" },
+              { name: "Server 5", sub: "AutoEmbed" },
               { name: "Server 6", sub: "Embed.su" },
             ].map((server) => (
               <button
@@ -247,7 +247,7 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
       {/* Footer */}
       <footer className="border-t border-streamex-border px-8 py-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-streamex-text-secondary">
-          <p>&copy; 2025 StreameX. All rights reserved.</p>
+          <p>&copy; 2025 Flux Stream. All rights reserved.</p>
           <div className="flex gap-4">
             <span className="hover:text-white transition-colors cursor-pointer">Terms</span>
             <span className="hover:text-white transition-colors cursor-pointer">Privacy</span>

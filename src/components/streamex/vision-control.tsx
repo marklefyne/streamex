@@ -392,7 +392,7 @@ export function VisionControl({ onBack }: VisionControlProps) {
           {/* Footer */}
           <footer className="border-t border-[#1a1a1a] px-0 py-6">
             <div className="flex items-center justify-between text-xs text-gray-600 font-mono">
-              <p>Vision Control &middot; StreameX Telemetry Engine</p>
+              <p>Vision Control &middot; Flux Stream Telemetry Engine</p>
               <p>{autoRefresh ? "Auto-refresh: 5s" : "Auto-refresh: off"}</p>
             </div>
           </footer>

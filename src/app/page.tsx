@@ -263,7 +263,7 @@ export default function Home() {
 
                   <footer className="border-t border-streamex-border px-8 py-6 mt-4">
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-streamex-text-secondary">
-                      <p>&copy; 2025 StreameX. All rights reserved. Powered by TMDB.</p>
+                      <p>&copy; 2025 Flux Stream. All rights reserved. Powered by TMDB.</p>
                       <div className="flex gap-4">
                         <span className="hover:text-white transition-colors cursor-pointer">Terms</span>
                         <span className="hover:text-white transition-colors cursor-pointer">Privacy</span>
@@ -333,7 +333,7 @@ export default function Home() {
 
               <footer className="border-t border-streamex-border px-8 py-6 mt-8">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-streamex-text-secondary">
-                  <p>&copy; 2025 StreameX. All rights reserved.</p>
+                  <p>&copy; 2025 Flux Stream. All rights reserved.</p>
                   <div className="flex gap-4">
                     <span className="hover:text-white transition-colors cursor-pointer">Terms</span>
                     <span className="hover:text-white transition-colors cursor-pointer">Privacy</span>
@@ -377,7 +377,7 @@ export default function Home() {
                     <div>
                       <h3 className="text-white font-medium mb-2">Preferences</h3>
                       <p className="text-sm text-streamex-text-secondary">
-                        Customize your StreameX experience. Settings will be available in a future update.
+                        Customize your Flux Stream experience. Settings will be available in a future update.
                       </p>
                     </div>
                     <div className="h-px bg-streamex-border" />
@@ -434,7 +434,7 @@ export default function Home() {
 
               <footer className="border-t border-streamex-border px-8 py-6 mt-8">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-streamex-text-secondary">
-                  <p>&copy; 2025 StreameX. All rights reserved.</p>
+                  <p>&copy; 2025 Flux Stream. All rights reserved.</p>
                   <div className="flex gap-4">
                     <span className="hover:text-white transition-colors cursor-pointer">Terms</span>
                     <span className="hover:text-white transition-colors cursor-pointer">Privacy</span>

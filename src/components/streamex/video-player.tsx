@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play,
@@ -10,6 +10,8 @@ import {
   ChevronLeft,
   Loader2,
   MonitorUp,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import type { CardItem, LiveMediaItem, MediaItem } from "@/lib/mock-data";
 import { getEmbedUrl, SERVERS } from "@/lib/mock-data";
@@ -24,28 +26,51 @@ interface VideoPlayerProps {
 }
 
 export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
-  const [activeServer, setActiveServer] = useState(SERVERS[0].id);
+  const [activeServerIndex, setActiveServerIndex] = useState(0);
   const [season, setSeason] = useState(1);
   const [episode, setEpisode] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [iframeKey, setIframeKey] = useState(0);
+  const [hasError, setHasError] = useState(false);
+  const [errorCount, setErrorCount] = useState(0);
 
   const tmdbId = item.tmdb_id;
-  const isTV = item.type === "TV Series" || item.type === "tv" || item.type === "Anime";
-  const mediaType = isTV ? "tv" : "movie";
-  const embedUrl = getEmbedUrl(tmdbId, mediaType, activeServer, season, episode);
+  // Detect TV shows from multiple possible type values
+  const isTV = item.type === "TV Series" || item.type === "tv" || item.type === "Anime" || item.id.startsWith("tv-");
+  const mediaType: "movie" | "tv" = isTV ? "tv" : "movie";
+
+  const activeServer = SERVERS[activeServerIndex] || SERVERS[0];
+  const embedUrl = getEmbedUrl(tmdbId, mediaType, activeServer.id, season, episode);
   const seasonsCount = isLegacyItem(item) ? (item.seasons || 1) : 1;
 
-  const handleServerChange = useCallback((serverId: string) => {
-    setActiveServer(serverId);
+  // Auto-try next server on error (cycle through all providers)
+  const tryNextServer = useCallback(() => {
+    const nextIndex = (activeServerIndex + 1) % SERVERS.length;
+    if (nextIndex === 0 && errorCount >= SERVERS.length) {
+      // All servers tried — stop
+      return;
+    }
+    setActiveServerIndex(nextIndex);
+    setErrorCount((c) => c + 1);
     setIsLoading(true);
+    setHasError(false);
+    setIframeKey((k) => k + 1);
+  }, [activeServerIndex, errorCount]);
+
+  const handleServerChange = useCallback((index: number) => {
+    setActiveServerIndex(index);
+    setErrorCount(0);
+    setIsLoading(true);
+    setHasError(false);
     setIframeKey((k) => k + 1);
   }, []);
 
   const handleEpisodeChange = useCallback((s: number, e: number) => {
     setSeason(s);
     setEpisode(e);
+    setErrorCount(0);
     setIsLoading(true);
+    setHasError(false);
     setIframeKey((k) => k + 1);
   }, []);
 
@@ -65,16 +90,15 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
         </h3>
         <div className="flex items-center gap-2 text-xs text-streamex-text-secondary">
           <MonitorUp size={14} />
-          <span className="hidden sm:inline">
-            {SERVERS.find((s) => s.id === activeServer)?.description}
-          </span>
+          <span className="hidden sm:inline">{activeServer.description}</span>
         </div>
       </div>
 
       {/* Player area */}
       <div className="relative flex-1 bg-black min-h-0">
+        {/* Loading overlay */}
         <AnimatePresence>
-          {isLoading && (
+          {isLoading && !hasError && (
             <motion.div
               key="loader"
               initial={{ opacity: 1 }}
@@ -84,8 +108,37 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
             >
               <Loader2 className="animate-spin text-streamex-accent mb-3" size={40} />
               <p className="text-sm text-streamex-text-secondary">
-                Loading stream from {SERVERS.find((s) => s.id === activeServer)?.name}…
+                Loading stream from {activeServer.description}…
               </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Error overlay with auto-retry */}
+        <AnimatePresence>
+          {hasError && (
+            <motion.div
+              key="error"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black"
+            >
+              <AlertTriangle className="text-amber-500 mb-3" size={40} />
+              <p className="text-sm text-white mb-1">This source is unavailable</p>
+              <p className="text-xs text-streamex-text-secondary mb-4">
+                {activeServer.description} couldn&apos;t load this title
+              </p>
+              <button
+                onClick={tryNextServer}
+                className="flex items-center gap-2 px-5 py-2.5 bg-streamex-accent hover:bg-streamex-accent-hover text-white rounded-lg font-semibold text-sm transition-colors cursor-pointer"
+              >
+                <RefreshCw size={14} />
+                Try Next Server
+                <span className="text-white/60 text-xs">
+                  ({activeServerIndex + 1}/{SERVERS.length})
+                </span>
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -96,9 +149,16 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
           className="absolute inset-0 w-full h-full"
           allowFullScreen
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-          onLoad={() => setIsLoading(false)}
-          sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-presentation"
-          title={`${item.title} - ${SERVERS.find((s) => s.id === activeServer)?.name}`}
+          onLoad={() => {
+            setIsLoading(false);
+            setHasError(false);
+          }}
+          onError={() => {
+            setIsLoading(false);
+            setHasError(true);
+          }}
+          referrerPolicy="origin"
+          title={`${item.title} - ${activeServer.description}`}
         />
       </div>
 
@@ -112,23 +172,23 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
-            {SERVERS.map((server) => (
+            {SERVERS.map((server, idx) => (
               <button
                 key={server.id}
-                onClick={() => handleServerChange(server.id)}
+                onClick={() => handleServerChange(idx)}
                 className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-all duration-200 cursor-pointer group ${
-                  activeServer === server.id
+                  idx === activeServerIndex
                     ? "bg-streamex-accent text-white shadow-lg shadow-streamex-accent/20"
                     : "bg-white/5 text-streamex-text-secondary hover:text-white hover:bg-white/10 border border-streamex-border"
                 }`}
               >
-                {activeServer === server.id && (
+                {idx === activeServerIndex && (
                   <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full" />
                 )}
                 <span>{server.name}</span>
                 <span
                   className={`text-[10px] ${
-                    activeServer === server.id
+                    idx === activeServerIndex
                       ? "text-white/70"
                       : "text-streamex-text-secondary/60"
                   }`}
@@ -151,9 +211,9 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
                 <select
                   value={season}
                   onChange={(e) => handleEpisodeChange(Number(e.target.value), 1)}
-                  className="bg-white/5 border border-streamex-border rounded-md px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-streamex-accent cursor-pointer"
+                  className="bg-[#1a1a1a] border border-streamex-border rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-streamex-accent cursor-pointer appearance-none [&>option]:bg-[#1a1a1a] [&>option]:text-white"
                 >
-                  {Array.from({ length: Math.max(seasonsCount, 5) }, (_, i) => (
+                  {Array.from({ length: Math.max(seasonsCount, 10) }, (_, i) => (
                     <option key={i + 1} value={i + 1}>
                       Season {i + 1}
                     </option>
@@ -167,9 +227,9 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
                 <select
                   value={episode}
                   onChange={(e) => handleEpisodeChange(season, Number(e.target.value))}
-                  className="bg-white/5 border border-streamex-border rounded-md px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-streamex-accent cursor-pointer"
+                  className="bg-[#1a1a1a] border border-streamex-border rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-streamex-accent cursor-pointer appearance-none [&>option]:bg-[#1a1a1a] [&>option]:text-white"
                 >
-                  {Array.from({ length: 10 }, (_, i) => (
+                  {Array.from({ length: 20 }, (_, i) => (
                     <option key={i + 1} value={i + 1}>
                       Episode {i + 1}
                     </option>
@@ -199,6 +259,11 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
               <span className="flex items-center gap-1 text-sm text-streamex-text-secondary">
                 <Tv size={12} />
                 {item.seasons} Season{item.seasons > 1 ? "s" : ""}
+              </span>
+            )}
+            {isTV && (
+              <span className="text-xs px-2 py-0.5 rounded bg-white/10 text-white">
+                S{String(season).padStart(2, "0")}E{String(episode).padStart(2, "0")}
               </span>
             )}
             <div className="flex gap-1.5 ml-1">

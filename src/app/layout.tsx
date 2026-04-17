@@ -16,9 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StreameX - Discover & Stream",
+  title: "Flux Stream - Discover & Stream",
   description:
-    "Discover your next favorite movie or TV show on StreameX. Browse thousands of titles across all genres.",
+    "Discover your next favorite movie or TV show on Flux Stream. Browse thousands of titles across all genres.",
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },

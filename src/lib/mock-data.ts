@@ -40,11 +40,21 @@ export function getEmbedUrl(
   const e = episode ?? 1;
 
   switch (serverId) {
-    case "vidsrc":
+    // Primary providers
+    case "vidsrc-to":
       return mediaType === "movie"
         ? `https://vidsrc.to/embed/movie/${tmdbId}`
         : `https://vidsrc.to/embed/tv/${tmdbId}/${s}/${e}`;
-    case "vidsrc2":
+    case "vidsrc-me":
+      return mediaType === "movie"
+        ? `https://vidsrc.me/embed/movie/${tmdbId}`
+        : `https://vidsrc.me/embed/tv/${tmdbId}/${s}/${e}`;
+    case "2embed":
+      return mediaType === "movie"
+        ? `https://www.2embed.cc/embed/${tmdbId}`
+        : `https://www.2embed.cc/embed/${tmdbId}/${s}/${e}`;
+    // Backup providers
+    case "vidsrc-cc":
       return mediaType === "movie"
         ? `https://vidsrc.cc/v2/embed/movie/${tmdbId}`
         : `https://vidsrc.cc/v2/embed/tv/${tmdbId}/${s}/${e}`;
@@ -52,15 +62,7 @@ export function getEmbedUrl(
       return mediaType === "movie"
         ? `https://player.autoembed.cc/embed/movie/${tmdbId}`
         : `https://player.autoembed.cc/embed/tv/${tmdbId}/${s}/${e}`;
-    case "movieapi":
-      return mediaType === "movie"
-        ? `https://moviesapi.club/movie/${tmdbId}`
-        : `https://moviesapi.club/tv/${tmdbId}-${s}-${e}`;
-    case "vidsrcxyz":
-      return mediaType === "movie"
-        ? `https://vidsrc.xyz/embed/movie/${tmdbId}`
-        : `https://vidsrc.xyz/embed/tv/${tmdbId}/${s}/${e}`;
-    case "embedsu":
+    case "embed-su":
       return mediaType === "movie"
         ? `https://embed.su/embed/movie/${tmdbId}`
         : `https://embed.su/embed/tv/${tmdbId}/${s}/${e}`;
@@ -78,10 +80,10 @@ export interface ServerOption {
 }
 
 export const SERVERS: ServerOption[] = [
-  { id: "vidsrc", name: "Server 1", description: "VidSrc" },
-  { id: "vidsrc2", name: "Server 2", description: "VidSrc CC" },
-  { id: "autoembed", name: "Server 3", description: "AutoEmbed" },
-  { id: "movieapi", name: "Server 4", description: "MoviesAPI" },
-  { id: "vidsrcxyz", name: "Server 5", description: "VidSrc XYZ" },
-  { id: "embedsu", name: "Server 6", description: "Embed.su" },
+  { id: "vidsrc-to", name: "Server 1", description: "VidSrc.to" },
+  { id: "vidsrc-me", name: "Server 2", description: "VidSrc.me" },
+  { id: "2embed", name: "Server 3", description: "2Embed.cc" },
+  { id: "vidsrc-cc", name: "Server 4", description: "VidSrc.cc" },
+  { id: "autoembed", name: "Server 5", description: "AutoEmbed" },
+  { id: "embed-su", name: "Server 6", description: "Embed.su" },
 ];

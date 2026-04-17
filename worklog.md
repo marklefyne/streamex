@@ -49,3 +49,43 @@ Stage Summary:
 - Admin dashboard accessible via Vision Control sidebar item with live stats
 - Search functional with TMDB multi-search endpoint and skeleton loading
 - Dev server running healthy on port 3000
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Fix video player providers, TV episode logic, select contrast, and brand rename
+
+Work Log:
+- Updated src/lib/mock-data.ts with new embed providers:
+  - Server 1: vidsrc.to (primary)
+  - Server 2: vidsrc.me (primary)
+  - Server 3: 2embed.cc (primary)
+  - Server 4: vidsrc.cc (backup)
+  - Server 5: autoembed.cc (backup)
+  - Server 6: embed.su (backup)
+- Rewrote VideoPlayer component with:
+  - Auto-fallback: on iframe error, shows "Try Next Server" button to cycle through all 6 providers
+  - Error state overlay with AlertTriangle icon and progress counter
+  - Fixed mediaType detection: checks for "TV Series", "tv", "Anime", and "tv-" prefix in item.id
+  - TV episode selector with up to 20 episodes per season and up to 10 seasons
+  - Episode badge (S01E05 format) shown in media info bar
+  - Removed sandbox attribute for better embed compatibility
+- Fixed select/dropdown contrast issue:
+  - Changed from bg-white/5 to bg-[#1a1a1a] for both select elements and option elements
+  - Added [&>option]:bg-[#1a1a1a] [&>option]:text-white Tailwind arbitrary variants
+  - Added appearance-none for consistent cross-browser styling
+- Brand update StreameX → Flux Stream in all files:
+  - src/app/layout.tsx (title + description metadata)
+  - src/components/streamex/sidebar.tsx (logo "F" + "Flux Stream" text)
+  - src/app/page.tsx (3 footers + settings text)
+  - src/components/streamex/movie-detail.tsx (footer)
+  - src/components/streamex/vision-control.tsx (footer)
+  - Verified zero remaining "StreameX" references via grep
+- All lint checks pass clean
+- Dev server confirmed healthy (200, no compilation errors)
+
+Stage Summary:
+- 6 working embed servers with auto-fallback on error
+- TV shows properly load specific episodes via /tv/{tmdb_id}/{season}/{episode} URLs
+- Select dropdowns now have proper dark theme contrast (dark bg + white text)
+- Brand fully renamed to "Flux Stream" across all user-facing text and metadata
