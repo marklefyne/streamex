@@ -9,9 +9,11 @@ interface MediaRowProps {
   items: CardItem[];
   startIndex?: number;
   onSelect?: (item: CardItem) => void;
+  showSubDub?: boolean;
+  icon?: React.ReactNode;
 }
 
-export function MediaRow({ title, items, startIndex = 0, onSelect }: MediaRowProps) {
+export function MediaRow({ title, items, startIndex = 0, onSelect, showSubDub, icon }: MediaRowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -55,10 +57,15 @@ export function MediaRow({ title, items, startIndex = 0, onSelect }: MediaRowPro
       onMouseLeave={() => setIsHovering(false)}
     >
       {/* Row title */}
-      <div className="flex items-center justify-between mb-3 px-8">
-        <h2 className="text-lg font-bold text-white">{title}</h2>
-        <button className="text-sm text-streamex-text-secondary hover:text-white transition-colors duration-200">
-          See all
+      <div className="flex items-center gap-2.5 mb-3 px-8">
+        {icon && (
+          <span className="text-streamex-accent">{icon}</span>
+        )}
+        <h2 className="text-base font-bold text-white tracking-tight">{title}</h2>
+        <span className="text-[11px] text-streamex-text-secondary/40 font-medium">{items.length} titles</span>
+        <div className="flex-1" />
+        <button className="text-xs text-streamex-text-secondary/50 hover:text-white transition-colors duration-200 font-medium">
+          See all →
         </button>
       </div>
 
@@ -68,10 +75,12 @@ export function MediaRow({ title, items, startIndex = 0, onSelect }: MediaRowPro
         {canScrollLeft && isHovering && (
           <button
             onClick={() => scroll("left")}
-            className="absolute left-0 top-0 bottom-0 w-12 z-20 flex items-center justify-center bg-gradient-to-r from-black via-black/80 to-transparent opacity-0 group-hover/row:opacity-100 transition-opacity duration-300 cursor-pointer"
+            className="absolute left-0 top-0 bottom-0 w-14 z-20 flex items-center justify-center bg-gradient-to-r from-black via-black/70 to-transparent opacity-0 group-hover/row:opacity-100 transition-opacity duration-300 cursor-pointer"
             aria-label="Scroll left"
           >
-            <ChevronLeft className="text-white" size={28} />
+            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm">
+              <ChevronLeft className="text-white" size={18} />
+            </div>
           </button>
         )}
 
@@ -81,7 +90,13 @@ export function MediaRow({ title, items, startIndex = 0, onSelect }: MediaRowPro
           className="flex gap-3 overflow-x-auto no-scrollbar px-8 pb-4"
         >
           {items.map((item, i) => (
-            <MediaCard key={item.id} item={item} index={startIndex + i} onSelect={onSelect} />
+            <MediaCard
+              key={item.id}
+              item={item}
+              index={startIndex + i}
+              onSelect={onSelect}
+              showSubDub={showSubDub}
+            />
           ))}
         </div>
 
@@ -89,10 +104,12 @@ export function MediaRow({ title, items, startIndex = 0, onSelect }: MediaRowPro
         {canScrollRight && isHovering && (
           <button
             onClick={() => scroll("right")}
-            className="absolute right-0 top-0 bottom-0 w-12 z-20 flex items-center justify-center bg-gradient-to-l from-black via-black/80 to-transparent opacity-0 group-hover/row:opacity-100 transition-opacity duration-300 cursor-pointer"
+            className="absolute right-0 top-0 bottom-0 w-14 z-20 flex items-center justify-center bg-gradient-to-l from-black via-black/70 to-transparent opacity-0 group-hover/row:opacity-100 transition-opacity duration-300 cursor-pointer"
             aria-label="Scroll right"
           >
-            <ChevronRight className="text-white" size={28} />
+            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm">
+              <ChevronRight className="text-white" size={18} />
+            </div>
           </button>
         )}
       </div>

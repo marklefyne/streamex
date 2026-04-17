@@ -341,3 +341,139 @@ Stage Summary:
 - Search UI: Complete redesign with glassmorphism input, animated clear button, keyboard shortcut hint, enhanced suggestion cards with larger posters, type badges, ratings, genre tags, and "View all results" footer
 - Files modified: video-player.tsx, sidebar.tsx, page.tsx
 - All lint checks pass with zero errors
+
+---
+Task ID: 11
+Agent: Sub Agent
+Task: Create Anime API route — trending anime from TMDB
+
+Work Log:
+- Read existing TMDB lib (src/lib/tmdb.ts) and trending route (src/app/api/tmdb/trending/route.ts) to understand patterns
+- Added `getTrendingAnime` function to src/lib/tmdb.ts:
+  - Fetches from TMDB /discover/tv with genre 16 (Animation), sorted by popularity.desc, Japanese original language
+  - Filters results to only items with poster_path
+- Added `toAnimeMediaItem` function to src/lib/tmdb.ts:
+  - Mirrors `toMediaItem` but hardcodes type to "Anime" instead of "TV Series" or "Movie"
+  - Uses `tv-${id}` prefix for consistent ID format
+  - Includes numberOfSeasons when available
+- Created /src/app/api/tmdb/anime/route.ts:
+  - GET endpoint accepting optional `page` query param (defaults to 1)
+  - Calls getTrendingAnime, maps results through toAnimeMediaItem, returns up to 20 items
+  - Follows exact same pattern as trending route (NextResponse.json, error handling, try/catch)
+- All lint checks pass with zero errors
+
+Stage Summary:
+- Modified: src/lib/tmdb.ts (added getTrendingAnime + toAnimeMediaItem)
+- Created: src/app/api/tmdb/anime/route.ts (GET /api/tmdb/anime)
+- API returns 20 anime items with type "Anime", sorted by popularity, Japanese original language
+- Endpoint: GET /api/tmdb/anime?page=1
+
+---
+Task ID: 12
+Agent: Sub Agent
+Task: Create Live Sports dashboard component
+
+Work Log:
+- Created /src/components/streamex/live-sports.tsx — standalone "use client" component (no local imports)
+- Added CSS keyframes (livePulse) and .live-pulse class to /src/app/globals.css
+- Component features:
+  - Sticky header with Trophy icon, live event count, and sport category dropdown
+  - Filter tabs: "Live Now" (red pulsing dot + Radio icon), "Today", "All Matches" — active uses accent color #E50914
+  - Category dropdown: All Sports, Football, Basketball, Fight, Cricket, Hockey, Baseball — each with emoji icon and match count
+  - 15 hardcoded realistic matches across 6 sports with mix of live (8) / scheduled (7) statuses
+  - Match cards: team colored-circle avatars (first letter), team names, VS divider, league label, status badges
+  - Live matches: red pulsing dot badge + live time indicator (e.g., "72'", "Q3 4:22", "Rd 9")
+  - Scheduled matches: Clock icon + time badge
+  - "Watch Now" overlay on hover with Play icon button and backdrop blur
+  - Responsive grid: 3 cols mobile, 4 md, 5 lg
+  - Framer-motion entrance animations (staggered fade+scale) and hover scale
+  - AnimatePresence for filter/dropdown transitions and empty state
+  - Dark theme: bg-[#0a0a0a], cards bg-[#121212] border-[#222], accent #E50914
+  - Empty state with Trophy icon when no matches match filters
+- Export: `export function LiveSports()` — fully standalone, zero local component imports
+- Imports from lucide-react: Radio, ChevronDown, Trophy, Play, Clock, Filter
+
+Stage Summary:
+- New file: src/components/streamex/live-sports.tsx
+- Modified file: src/app/globals.css (added livePulse keyframes + .live-pulse class)
+- Component is self-contained and can be dropped into any page/view with a simple import
+
+---
+Task ID: 13
+Agent: Main Agent
+Task: Major UI overhaul — StreamX-style layout with all new sections
+
+Work Log:
+- Completely redesigned sidebar (/src/components/streamex/sidebar.tsx):
+  - Section-based navigation: Main (Home, Search), Media (Movies, TV Shows, Anime, Manga, Music, Live Sports), User (Watchlist, History), More (Legal/DMCA)
+  - Active state indicator: left accent bar (3px red rounded-r-full)
+  - Live Sports nav item with pulsing red LIVE dot
+  - Slimmer width (240px expanded, 68px collapsed), cleaner typography
+  - Section headers with ultra-fine uppercase tracking labels
+  - Improved search suggestions: anime-aware type badges (emerald for Anime)
+
+- Enhanced MediaCard (/src/components/streamex/media-card.tsx):
+  - New `showSubDub` prop for anime cards
+  - Sub/Dub badges: green "SUB" + amber "DUB" on top-right for anime
+  - Type badges for non-anime: blue (Movie), purple (TV), emerald (Anime)
+  - Improved hover: scale + translate-y for floating effect
+  - Better title display with ⭐ rating + year below card
+
+- Enhanced MediaRow (/src/components/streamex/media-row.tsx):
+  - New `icon` prop for row title icons
+  - New `showSubDub` prop pass-through to cards
+  - Pill-shaped scroll arrows with backdrop blur
+  - Item count display next to row title
+  - "See all →" link styling
+
+- Enhanced HeroShowcase (/src/components/streamex/hero-showcase.tsx):
+  - "Add to Watchlist" button with Plus/Check toggle using favorites store
+  - Three buttons: Play Now (accent), Watchlist (glass), More Info (subtle)
+  - "In Watchlist" state shows green checkmark
+  - Larger hero (65vh), more gradient fade at bottom
+
+- Created Live Sports dashboard (/src/components/streamex/live-sports.tsx):
+  - Filter tabs: Live Now (red pulse), Today, All Matches
+  - Category dropdown: All Sports, Football, Basketball, Fight, Cricket, Hockey, Baseball
+  - 15 hardcoded match cards across 6 sports with realistic team names
+  - Live badge with CSS pulse animation
+  - Scheduled badge with clock icon + time
+  - Watch Now hover overlay with blur + Play button
+  - 3/4/5 column responsive grid
+  - Self-contained (no local imports except react/framer/lucide)
+
+- Created Anime API route (/src/app/api/tmdb/anime/route.ts):
+  - GET /api/tmdb/anime — fetches trending anime via TMDB discover/tv with genre 16 + Japanese language filter
+  - Added `getTrendingAnime()` and `toAnimeMediaItem()` to tmdb.ts
+
+- Created Top Rated TV API route (/src/app/api/tmdb/top-rated-tv/route.ts):
+  - GET /api/tmdb/top-rated-tv — returns top 20 top-rated TV shows
+
+- Completely rewrote page.tsx with all new views:
+  - ViewType now includes: home, search, movies, tvshows, anime, manga, music, sports, favorites, history, dmca, detail
+  - Home view: 8 content rows (Continue Watching, Most Watched, Trending Movies, Trending Shows, Top Rated, New Releases, Trending Anime with Sub/Dub, Popular TV)
+  - Movies view: Trending Movies, Top Rated, Now Playing
+  - TV Shows view: Trending Shows, Popular TV, Top Rated Shows
+  - Anime view: Trending Anime with Sub/Dub badges, emerald-themed header
+  - Manga view: 12-card "Coming Soon" grid with BookOpen icon placeholders
+  - Music view: 12-card "Coming Soon" grid with Music icon placeholders
+  - Live Sports view: Renders LiveSports component
+  - DMCA: Opens modal from sidebar (no dedicated page)
+  - Fetches 8 API endpoints in parallel on mount
+  - Shared SiteFooter component for consistency
+  - ComingSoonView reusable component for placeholder sections
+
+- Added CSS animation to globals.css:
+  - @keyframes livePulse (2s ease-in-out infinite opacity cycle)
+  - .live-pulse utility class
+
+- Global scrollbar: main content uses `no-scrollbar` for hidden scrollbars (Netflix feel)
+
+Stage Summary:
+- Sidebar: Section-based with 12 nav items across 4 categories
+- All views fully populated: Movies (3 rows), TV Shows (3 rows), Anime (Sub/Dub), Sports (15 matches), Manga/Music (Coming Soon grids)
+- Cards: Type badges, Sub/Dub for anime, rating + year below poster, hover lift effect
+- Hero: 3 action buttons including Watchlist toggle
+- 3 new API routes: anime, top-rated-tv
+- 2 new TMDB lib functions: getTrendingAnime, toAnimeMediaItem
+- All lint checks pass with zero errors

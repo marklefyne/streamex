@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Play, Info, Star, Clock, Tv } from "lucide-react";
+import { Play, Info, Star, Clock, Tv, Plus, Check } from "lucide-react";
 import type { LiveMediaItem, CardItem } from "@/lib/mock-data";
+import { useFavoritesStore } from "@/lib/favorites-store";
 
 interface HeroShowcaseProps {
   item: CardItem;
@@ -17,23 +18,35 @@ function isLiveItem(item: CardItem): item is LiveMediaItem {
 export function HeroShowcase({ item, onSelect }: HeroShowcaseProps) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const backdropSrc = isLiveItem(item) ? item.backdropImage : "/streamex/hero-bg.png";
+  const isFavorite = useFavoritesStore((s) => s.isFavorite);
+  const toggleFavorite = useFavoritesStore((s) => s.toggleFavorite);
+  const nodeId = typeof window !== 'undefined' ? localStorage.getItem("node_id") || "" : "";
+  const favorited = isFavorite(item.tmdb_id);
+
+  const handleToggleWatchlist = () => {
+    toggleFavorite(
+      {
+        tmdb_id: item.tmdb_id,
+        title: item.title,
+        type: item.type,
+        year: item.year,
+        rating: item.rating,
+        posterImage: item.posterImage,
+      },
+      nodeId
+    );
+  };
 
   return (
-    <div className="relative w-full h-[60vh] min-h-[400px] max-h-[600px] overflow-hidden">
+    <div className="relative w-full h-[65vh] min-h-[450px] max-h-[650px] overflow-hidden">
       {/* Background image */}
       <div className="absolute inset-0">
-        {/* Gradient fallback */}
         <div className="absolute inset-0 bg-gradient-to-br from-amber-900/40 via-red-900/30 to-slate-900/60" />
-
-        {/* Real backdrop image */}
         {backdropSrc && (
           <>
             <div
               className="absolute inset-0 bg-cover bg-center transition-opacity duration-700"
-              style={{
-                backgroundImage: `url(${backdropSrc})`,
-                opacity: imgLoaded ? 0.5 : 0,
-              }}
+              style={{ backgroundImage: `url(${backdropSrc})`, opacity: imgLoaded ? 0.5 : 0 }}
             />
             <img
               src={backdropSrc}
@@ -44,11 +57,9 @@ export function HeroShowcase({ item, onSelect }: HeroShowcaseProps) {
             />
           </>
         )}
-
-        {/* Gradient overlays */}
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40" />
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black to-transparent" />
       </div>
 
       {/* Content */}
@@ -56,10 +67,10 @@ export function HeroShowcase({ item, onSelect }: HeroShowcaseProps) {
         <div className="max-w-xl page-transition">
           {/* Type badge */}
           <div className="flex items-center gap-2 mb-3">
-            <span className="px-2.5 py-1 bg-streamex-accent rounded text-xs font-bold text-white uppercase tracking-wider">
+            <span className="px-2.5 py-1 bg-streamex-accent rounded text-[10px] font-bold text-white uppercase tracking-wider">
               Featured
             </span>
-            <span className="px-2.5 py-1 bg-white/10 backdrop-blur-sm rounded text-xs font-medium text-white/80">
+            <span className="px-2.5 py-1 bg-white/10 backdrop-blur-sm rounded text-[10px] font-medium text-white/80 uppercase tracking-wide">
               {item.type}
             </span>
           </div>
@@ -74,7 +85,7 @@ export function HeroShowcase({ item, onSelect }: HeroShowcaseProps) {
             {item.title}
           </motion.h1>
 
-          {/* Meta info */}
+          {/* Meta */}
           <motion.div
             className="flex items-center gap-3 text-sm text-streamex-text-secondary mb-3"
             initial={{ opacity: 0, y: 15 }}
@@ -85,24 +96,18 @@ export function HeroShowcase({ item, onSelect }: HeroShowcaseProps) {
               <Star className="fill-yellow-500 text-yellow-500" size={14} />
               <span className="text-white font-semibold">{item.rating.toFixed(1)}</span>
             </span>
-            <span className="w-1 h-1 rounded-full bg-streamex-text-secondary" />
+            <span className="w-1 h-1 rounded-full bg-streamex-text-secondary/40" />
             <span>{item.year || "—"}</span>
             {"runtime" in item && item.runtime && (
               <>
-                <span className="w-1 h-1 rounded-full bg-streamex-text-secondary" />
-                <span className="flex items-center gap-1">
-                  <Clock size={12} />
-                  {item.runtime}
-                </span>
+                <span className="w-1 h-1 rounded-full bg-streamex-text-secondary/40" />
+                <span className="flex items-center gap-1"><Clock size={12} />{item.runtime}</span>
               </>
             )}
             {"seasons" in item && item.seasons && (
               <>
-                <span className="w-1 h-1 rounded-full bg-streamex-text-secondary" />
-                <span className="flex items-center gap-1">
-                  <Tv size={12} />
-                  {item.seasons} Season{item.seasons > 1 ? "s" : ""}
-                </span>
+                <span className="w-1 h-1 rounded-full bg-streamex-text-secondary/40" />
+                <span className="flex items-center gap-1"><Tv size={12} />{item.seasons} Season{item.seasons > 1 ? "s" : ""}</span>
               </>
             )}
           </motion.div>
@@ -115,10 +120,7 @@ export function HeroShowcase({ item, onSelect }: HeroShowcaseProps) {
             transition={{ duration: 0.6, delay: 0.25 }}
           >
             {item.genres.slice(0, 4).map((genre) => (
-              <span
-                key={genre}
-                className="px-2 py-0.5 border border-streamex-border rounded text-xs text-streamex-text-secondary"
-              >
+              <span key={genre} className="px-2 py-0.5 border border-white/[0.06] rounded text-[11px] text-streamex-text-secondary/70">
                 {genre}
               </span>
             ))}
@@ -141,13 +143,39 @@ export function HeroShowcase({ item, onSelect }: HeroShowcaseProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
           >
-            <button onClick={() => onSelect?.(item)} className="flex items-center gap-2 px-6 py-2.5 bg-streamex-accent hover:bg-streamex-accent-hover text-white rounded-lg font-semibold text-sm transition-colors duration-200 cursor-pointer">
+            <button
+              onClick={() => onSelect?.(item)}
+              className="flex items-center gap-2 px-7 py-3 bg-streamex-accent hover:bg-streamex-accent-hover text-white rounded-lg font-semibold text-sm transition-all duration-200 cursor-pointer shadow-lg shadow-streamex-accent/20"
+            >
               <Play size={16} fill="white" />
               Play Now
             </button>
-            <button onClick={() => onSelect?.(item)} className="flex items-center gap-2 px-6 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg font-semibold text-sm transition-colors duration-200 cursor-pointer">
+            <button
+              onClick={handleToggleWatchlist}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm transition-all duration-200 cursor-pointer backdrop-blur-sm border ${
+                favorited
+                  ? "bg-white/10 border-white/20 text-white hover:bg-white/15"
+                  : "bg-white/[0.06] border-white/[0.08] text-white/80 hover:bg-white/15 hover:text-white"
+              }`}
+            >
+              {favorited ? (
+                <>
+                  <Check size={16} className="text-emerald-400" />
+                  <span className="text-emerald-400">In Watchlist</span>
+                </>
+              ) : (
+                <>
+                  <Plus size={16} />
+                  <span>Watchlist</span>
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => onSelect?.(item)}
+              className="flex items-center gap-2 px-5 py-3 bg-white/[0.04] hover:bg-white/10 text-white/60 hover:text-white rounded-lg font-medium text-sm transition-all duration-200 cursor-pointer"
+            >
               <Info size={16} />
-              More Info
+              <span className="hidden sm:inline">More Info</span>
             </button>
           </motion.div>
         </div>

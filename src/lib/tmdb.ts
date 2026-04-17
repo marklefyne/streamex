@@ -171,6 +171,16 @@ export async function getGenres(): Promise<TMDBGenre[]> {
   return Array.from(allGenres.values());
 }
 
+export async function getTrendingAnime(page: number = 1): Promise<TMDBMovie[]> {
+  const data = await tmdbFetch<TMDBResponse>("/discover/tv", {
+    with_genres: "16",
+    sort_by: "popularity.desc",
+    with_original_language: "ja",
+    page: String(page),
+  });
+  return data.results.filter((item) => item.poster_path);
+}
+
 export async function getByGenre(genreId: number, mediaType: string = "movie", page: number = 1): Promise<TMDBMovie[]> {
   const data = await tmdbFetch<TMDBResponse>(`/discover/${mediaType}`, {
     with_genres: String(genreId),
@@ -206,6 +216,40 @@ export function getImageUrl(path: string | null, size: string = "w500"): string 
 export function getBackdropUrl(path: string | null, size: string = "original"): string {
   if (!path) return "";
   return `https://image.tmdb.org/t/p/${size}${path}`;
+}
+
+/** Convert a TMDB anime show to our MediaItem format with type "Anime" */
+export async function toAnimeMediaItem(item: TMDBMovie): Promise<{
+  id: string;
+  tmdb_id: number;
+  title: string;
+  year: number;
+  type: string;
+  rating: number;
+  genres: string[];
+  description: string;
+  posterImage: string;
+  backdropImage: string;
+  numberOfSeasons?: number;
+}> {
+  const title = item.title || item.name || "Unknown";
+  const dateStr = item.release_date || item.first_air_date || "";
+  const year = dateStr ? parseInt(dateStr.substring(0, 4)) : 0;
+  const genres = await resolveGenreNames(item.genre_ids, item.genres);
+
+  return {
+    id: `tv-${item.id}`,
+    tmdb_id: item.id,
+    title,
+    year,
+    type: "Anime",
+    rating: Math.round(item.vote_average * 10) / 10,
+    genres,
+    description: item.overview || "No description available.",
+    posterImage: getImageUrl(item.poster_path),
+    backdropImage: getBackdropUrl(item.backdrop_path),
+    ...(item.number_of_seasons ? { numberOfSeasons: item.number_of_seasons } : {}),
+  };
 }
 
 /** Convert a TMDB movie/show to our MediaItem format */
