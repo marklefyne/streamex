@@ -9,7 +9,6 @@ import {
   Tv,
   Calendar,
   ChevronLeft,
-  ListPlus,
   Heart,
   Share2,
   Subtitles,
@@ -19,6 +18,7 @@ import type { CardItem, LiveMediaItem, MediaItem } from "@/lib/mock-data";
 import { VideoPlayer } from "./video-player";
 import { MediaCard } from "./media-card";
 import { SERVERS } from "@/lib/mock-data";
+import { useFavoritesStore, type FavoriteItem } from "@/lib/favorites-store";
 
 function isLegacyItem(item: CardItem): item is MediaItem {
   return "posterGradient" in item;
@@ -37,13 +37,26 @@ interface MovieDetailProps {
 export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
   const [showPlayer, setShowPlayer] = useState(false);
   const [initialServerIndex, setInitialServerIndex] = useState(0);
-  const [isInList, setIsInList] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
+
+  const isFav = useFavoritesStore((s) => s.isFavorite(item.tmdb_id));
+  const toggleFavorite = useFavoritesStore((s) => s.toggleFavorite);
 
   const handlePlay = useCallback((serverIndex: number = 0) => {
     setInitialServerIndex(serverIndex);
     setShowPlayer(true);
   }, []);
+
+  const handleToggleFavorite = useCallback(() => {
+    const favItem: FavoriteItem = {
+      tmdb_id: item.tmdb_id,
+      title: item.title,
+      type: item.type,
+      posterImage: item.posterImage || "",
+      year: item.year || 0,
+      rating: item.rating || 0,
+    };
+    toggleFavorite(favItem);
+  }, [item, toggleFavorite]);
 
   if (showPlayer) {
     return (
@@ -77,7 +90,7 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
         <div className="absolute inset-0 bg-gradient-to-br opacity-50 from-red-950/40 via-black to-black/60" />
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/30" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent h-48 bottom-0 left-0 right-0" />
 
         <motion.button
           initial={{ opacity: 0, x: -10 }}
@@ -174,25 +187,15 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
                   Play Now
                 </button>
                 <button
-                  onClick={() => setIsInList(!isInList)}
+                  onClick={handleToggleFavorite}
                   className={`flex items-center gap-2 px-5 py-3 rounded-lg font-semibold text-sm transition-all duration-200 cursor-pointer border ${
-                    isInList
-                      ? "bg-white/10 border-white/20 text-white"
+                    isFav
+                      ? "bg-red-500/10 border-red-500/30 text-red-400"
                       : "bg-white/5 border-streamex-border text-streamex-text-secondary hover:text-white hover:border-white/20"
                   }`}
                 >
-                  <ListPlus size={16} />
-                  {isInList ? "In My List" : "Add to List"}
-                </button>
-                <button
-                  onClick={() => setIsLiked(!isLiked)}
-                  className={`p-3 rounded-lg transition-all duration-200 cursor-pointer border ${
-                    isLiked
-                      ? "bg-red-500/10 border-red-500/30 text-red-500"
-                      : "bg-white/5 border-streamex-border text-streamex-text-secondary hover:text-white hover:border-white/20"
-                  }`}
-                >
-                  <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
+                  <Heart size={16} fill={isFav ? "currentColor" : "none"} />
+                  {isFav ? "Favorited" : "Favorite"}
                 </button>
                 <button className="p-3 rounded-lg bg-white/5 border border-streamex-border text-streamex-text-secondary hover:text-white hover:border-white/20 transition-all duration-200 cursor-pointer">
                   <Share2 size={16} />

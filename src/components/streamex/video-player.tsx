@@ -9,7 +9,6 @@ import {
   ChevronLeft,
   Loader2,
   MonitorUp,
-  AlertTriangle,
   RefreshCw,
   Subtitles,
   Zap,
@@ -18,6 +17,7 @@ import {
 } from "lucide-react";
 import type { CardItem, LiveMediaItem, MediaItem } from "@/lib/mock-data";
 import { getEmbedUrl, SERVERS } from "@/lib/mock-data";
+import { useHistoryStore } from "@/lib/history-store";
 
 function isLegacyItem(item: CardItem): item is MediaItem {
   return "posterGradient" in item;
@@ -45,6 +45,9 @@ export function VideoPlayer({ item, onClose, initialServerIndex = 0 }: VideoPlay
   const [triedServers, setTriedServers] = useState<Set<number>>(new Set());
   const [fallbackInProgress, setFallbackInProgress] = useState(false);
   const loadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const historyTrackedRef = useRef<string>("");
+
+  const addToHistory = useHistoryStore((s) => s.addToHistory);
 
   const tmdbId = item.tmdb_id;
   const isTV =
@@ -66,6 +69,24 @@ export function VideoPlayer({ item, onClose, initialServerIndex = 0 }: VideoPlay
 
   const seasonEpisodesData = isLiveItem(item) ? item.seasonEpisodes : undefined;
   const currentSeasonEpisodes = seasonEpisodesData?.[season] || 30;
+
+  // Track watch history when player starts playing
+  const trackHistory = useCallback((s: number, e: number) => {
+    const trackKey = `${tmdbId}-${s}-${e}`;
+    if (historyTrackedRef.current === trackKey) return;
+    historyTrackedRef.current = trackKey;
+
+    addToHistory(
+      {
+        tmdb_id: tmdbId,
+        title: item.title,
+        type: item.type,
+        posterImage: item.posterImage || "",
+      },
+      isTV ? s : undefined,
+      isTV ? e : undefined
+    );
+  }, [tmdbId, item.title, item.type, item.posterImage, isTV, addToHistory]);
 
   // Smart fallback: auto-try next server on timeout
   const tryNextServer = useCallback(() => {
@@ -138,7 +159,8 @@ export function VideoPlayer({ item, onClose, initialServerIndex = 0 }: VideoPlay
     }
     setPlayerState("playing");
     setFallbackInProgress(false);
-  }, []);
+    trackHistory(season, episode);
+  }, [season, episode, trackHistory]);
 
   const handleIframeError = useCallback(() => {
     if (loadTimerRef.current) {

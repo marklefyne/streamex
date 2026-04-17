@@ -75,3 +75,56 @@ Stage Summary:
 - API: POST /api/telemetry/node — upserts node data (node_id, ip, device_type, cpu_cores, first_seen, last_seen)
 - Client: TelemetryTracker component fires silently on every page load
 - **ACTION REQUIRED**: User must run the SQL in Supabase SQL Editor to create the `nodes` table + RLS policy
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Add DMCA page, Favorites feature, and Watch History feature
+
+Work Log:
+- Updated .env.local with new Supabase credentials (project ovcmvskfofofmvk)
+- Created /src/lib/favorites-store.ts — Zustand store with localStorage backup + Supabase sync
+  - Methods: addFavorite, removeFavorite, toggleFavorite, isFavorite, loadFavorites, fetchFromServer
+  - Uses flux_node_id from localStorage as user identifier
+- Created /src/lib/history-store.ts — Zustand store with localStorage backup + Supabase sync
+  - Methods: addToHistory, loadHistory, clearHistory
+  - Max 50 entries, deduplicates by tmdb_id+season+episode combo
+- Created /src/app/api/favorites/route.ts — GET/POST/DELETE endpoints for favorites table
+- Created /src/app/api/history/route.ts — GET/POST/DELETE endpoints for watch_history table
+- Updated /src/components/streamex/sidebar.tsx:
+  - Added Library section below Browse with History (Clock icon) and Favorites (Heart icon)
+  - Added "Browse" and "Library" section labels
+  - Added divider between sections
+- Updated /src/app/page.tsx:
+  - Added "history" | "favorites" to ViewType
+  - Added DMCA button (top-right) with ShieldAlert icon — opens modal with full DMCA takedown notice
+  - Added Favorites view: grid of favorited items with heart badge overlay, empty state message
+  - Added History view: grid of watched items with date overlay and S##E## badges, Clear All button
+  - Loads favorites and history from stores on mount
+  - Imports from favorites-store and history-store
+- Updated /src/components/streamex/movie-detail.tsx:
+  - Removed local isLiked and isInList state
+  - Uses useFavoritesStore for isFavorite() and toggleFavorite()
+  - Replaced "Add to List" button with "Favorite" button (heart icon, reads from store)
+- Updated /src/components/streamex/video-player.tsx:
+  - Imports useHistoryStore addToHistory
+  - Tracks watch history on iframe load (once per tmdb_id+season+episode combo via ref)
+  - Removed unused imports (AlertTriangle)
+- Updated /src/app/api/telemetry/node/route.ts:
+  - New field names: node_id, ip_address, status, compute_power, platform, last_seen
+  - Maintains backward compat with server-side IP resolution
+- Updated /src/components/streamex/telemetry-tracker.tsx:
+  - Fetches public IP from https://api.ipify.org?format=json
+  - Uses navigator.hardwareConcurrency (compute_power) and navigator.platform
+  - Sends heartbeats every 60 seconds
+  - Fully silent — no console.log, no alerts
+- All lint checks pass with zero errors
+
+Stage Summary:
+- Supabase credentials updated to new project: ovcmvskfofofmvk
+- Favorites: Full CRUD with localStorage + Supabase sync, heart button in detail page
+- History: Auto-tracked on play, max 50 items, clear all button
+- DMCA: Top-right button + modal with standard legal text
+- Sidebar: Two sections (Browse + Library) with History and Favorites nav items
+- Telemetry: Updated payload fields, 60s heartbeat, public IP fetch
+- **ACTION REQUIRED**: User must run the SQL in Supabase SQL Editor to create favorites + watch_history tables

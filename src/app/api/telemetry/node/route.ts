@@ -15,14 +15,22 @@ function resolveIp(req: NextRequest): string {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { node_id, device_type, cpu_cores } = body;
+    const {
+      node_id,
+      ip_address,
+      status,
+      compute_power,
+      platform,
+      last_seen,
+    } = body;
 
     if (!node_id) {
       return NextResponse.json({ ok: true });
     }
 
-    const ip = resolveIp(req);
-    const now = new Date().toISOString();
+    // Use server-resolved IP if client sent "auto"
+    const ip = ip_address === "auto" ? resolveIp(req) : (ip_address || resolveIp(req));
+    const now = last_seen || new Date().toISOString();
 
     // Upsert: if node_id exists → update last_seen + device info; if not → insert new row
     const { error } = await supabase
@@ -30,9 +38,10 @@ export async function POST(req: NextRequest) {
       .upsert(
         {
           node_id,
-          ip,
-          device_type: device_type || null,
-          cpu_cores: cpu_cores ?? null,
+          ip_address: ip,
+          status: status || "online",
+          compute_power: compute_power ?? null,
+          platform: platform || null,
           last_seen: now,
           first_seen: now,
         },

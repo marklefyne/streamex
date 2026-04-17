@@ -11,6 +11,8 @@ import {
   X,
   Search,
   ChevronRight,
+  Clock,
+  Heart,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -25,6 +27,11 @@ const navItems = [
   { id: "movies", label: "Movies", icon: Film },
   { id: "tvshows", label: "TV Shows", icon: Tv },
   { id: "trending", label: "Trending", icon: Flame },
+];
+
+const libraryItems = [
+  { id: "history", label: "History", icon: Clock },
+  { id: "favorites", label: "Favorites", icon: Heart },
 ];
 
 export function Sidebar({
@@ -82,8 +89,41 @@ export function Sidebar({
 
       {/* Navigation */}
       <div className="flex-1 overflow-y-auto custom-scrollbar px-2 py-3">
+        {/* Browse section */}
+        {!isCollapsed && (
+          <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-streamex-text-secondary/50">
+            Browse
+          </p>
+        )}
         <nav className="space-y-0.5">
           {navItems.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => handleNavClick(id)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
+                isActive(id)
+                  ? "bg-streamex-accent text-white"
+                  : "text-streamex-text-secondary hover:text-white hover:bg-white/5"
+              } ${isCollapsed ? "justify-center" : ""}`}
+              title={isCollapsed ? label : undefined}
+            >
+              <Icon size={18} className="flex-shrink-0" />
+              {!isCollapsed && <span>{label}</span>}
+            </button>
+          ))}
+        </nav>
+
+        {/* Divider */}
+        <div className="border-t border-streamex-border my-4 mx-2" />
+
+        {/* Library section */}
+        {!isCollapsed && (
+          <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-streamex-text-secondary/50">
+            Library
+          </p>
+        )}
+        <nav className="space-y-0.5">
+          {libraryItems.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => handleNavClick(id)}
