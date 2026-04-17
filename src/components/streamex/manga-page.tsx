@@ -225,6 +225,7 @@ function MangaCard({
             alt={manga.title}
             className="w-full h-full object-cover"
             loading={index < 6 ? "eager" : "lazy"}
+            referrerPolicy="no-referrer"
             initial={{ opacity: 0 }}
             animate={{ opacity: loaded ? 1 : 0 }}
             transition={{ duration: 0.4 }}
@@ -634,6 +635,7 @@ function DetailView({
             <img
               src={manga.coverUrl}
               alt=""
+              referrerPolicy="no-referrer"
               className="w-full h-full object-cover"
               onError={() => setCoverErrored(true)}
             />
@@ -676,6 +678,7 @@ function DetailView({
                   <img
                     src={manga.coverUrl}
                     alt={manga.title}
+                    referrerPolicy="no-referrer"
                     className={`w-full h-full object-cover transition-opacity duration-500 ${
                       coverLoaded ? "opacity-100" : "opacity-0"
                     }`}
@@ -1092,6 +1095,7 @@ function ReaderView({
                   <motion.img
                     src={page.lowResUrl || page.url}
                     alt={`Page ${page.index + 1}`}
+                    referrerPolicy="no-referrer"
                     className={`w-full max-w-[780px] h-auto bg-white/[0.02] transition-opacity duration-300 ${
                       imgLoaded ? "opacity-100" : "opacity-0 absolute inset-0"
                     }`}

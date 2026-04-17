@@ -18,6 +18,7 @@ import { MiniPlayer } from "@/components/streamex/mini-player";
 import { LiveSports } from "@/components/streamex/live-sports";
 import { MusicPage } from "@/components/streamex/music-page";
 import { MangaPage } from "@/components/streamex/manga-page";
+import { AnimePage } from "@/components/streamex/anime-page";
 import { MusicMiniPlayer } from "@/components/streamex/music-mini-player";
 
 import { useFavoritesStore, type FavoriteItem } from "@/lib/favorites-store";
@@ -629,28 +630,8 @@ export default function Home() {
 
           {/* ============ ANIME VIEW ============ */}
           {!isInSearchMode && activeView === "anime" && (
-            <motion.div key="anime" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="py-6">
-              <div className="px-8 mb-6">
-                <div className="flex items-center gap-3 mb-1">
-                  <Sparkles size={22} className="text-emerald-400" />
-                  <h1 className="text-2xl font-bold text-white">Anime</h1>
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400">Sub & Dub</span>
-                </div>
-                <p className="text-sm text-streamex-text-secondary">Trending anime series with subtitles and dubs</p>
-              </div>
-              {animeItems.length > 0 ? (
-                <div className="space-y-2">
-                  <MediaRow title="Trending Anime" icon={<Flame size={16} />} items={animeItems} onSelect={handleSelectItem} showSubDub />
-                </div>
-              ) : isInitialLoading ? (
-                <SkeletonRow title count={8} />
-              ) : (
-                <div className="flex flex-col items-center justify-center py-20 px-8">
-                  <Sparkles size={32} className="text-streamex-text-secondary/20 mb-4" />
-                  <h3 className="text-lg font-medium text-white mb-1">Loading anime...</h3>
-                </div>
-              )}
-              <SiteFooter />
+            <motion.div key="anime" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+              <AnimePage onSelect={handleSelectItem} />
             </motion.div>
           )}
 

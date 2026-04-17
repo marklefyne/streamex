@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, MonitorPlay, Zap, Shield, HardDrive, Check, Link, ExternalLink, AlertCircle } from "lucide-react";
+import { X, MonitorPlay, Zap, Shield, HardDrive, Check, Link, ExternalLink, AlertCircle, Info, RefreshCw } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -52,6 +52,67 @@ function resolveStreamUrl(match: SportMatch, serverId: string): string | null {
   return null;
 }
 
+/**
+ * Validate a URL format — returns true if it looks like a valid URL.
+ */
+function isValidUrl(url: string): boolean {
+  if (!url.trim()) return false;
+  try {
+    const parsed = new URL(url.startsWith("http") ? url : `https://${url}`);
+    return !!parsed.hostname && parsed.hostname.includes(".");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Convert a pasted URL to an embed-compatible URL.
+ * - YouTube watch / short links → embed
+ * - Twitch channels → player embed
+ * - M3U8 / HLS links → hlsplayer.net embed
+ * - Dailymotion → embed
+ * - Everything else → returned as-is
+ */
+function convertToEmbedUrl(raw: string): string {
+  const trimmed = raw.trim();
+
+  // YouTube watch URL
+  if (trimmed.includes("youtube.com/watch")) {
+    const vid = new URL(trimmed).searchParams.get("v");
+    if (vid) return `https://www.youtube.com/embed/${vid}`;
+  }
+  // YouTube short URL
+  if (trimmed.includes("youtu.be/")) {
+    const vid = trimmed.split("youtu.be/")[1]?.split("?")[0];
+    if (vid) return `https://www.youtube.com/embed/${vid}`;
+  }
+  // YouTube embed URL (already embedded)
+  if (trimmed.includes("youtube.com/embed/")) {
+    return trimmed;
+  }
+  // Twitch
+  if (trimmed.includes("twitch.tv/")) {
+    const channel = trimmed.split("twitch.tv/")[1]?.split("?")[0];
+    if (channel) return `https://player.twitch.tv/?channel=${channel}&parent=${typeof window !== "undefined" ? window.location.hostname : "localhost"}`;
+  }
+  // Dailymotion
+  if (trimmed.includes("dailymotion.com/video/")) {
+    const vid = trimmed.split("dailymotion.com/video/")[1]?.split("_")[0];
+    if (vid) return `https://www.dailymotion.com/embed/video/${vid}`;
+  }
+  // M3U8 / HLS
+  if (trimmed.endsWith(".m3u8") || trimmed.includes(".m3u8?") || trimmed.includes("/hls/") || trimmed.includes("format=m3u8")) {
+    return `https://hlsplayer.net/?url=${encodeURIComponent(trimmed)}`;
+  }
+  // Direct MP4 / video link
+  if (trimmed.endsWith(".mp4") || trimmed.endsWith(".webm")) {
+    return `https://hlsplayer.net/?url=${encodeURIComponent(trimmed)}`;
+  }
+
+  // Return as-is for embed URLs and other valid links
+  return trimmed;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -62,43 +123,101 @@ interface SportsPlayerModalProps {
 }
 
 export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
-  // Use match.id as key to reset state — rendered in AnimatePresence with key={match.id}
   const [activeServer, setActiveServer] = useState("server-1");
   const [customUrl, setCustomUrl] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [activeCustomUrl, setActiveCustomUrl] = useState<string | null>(null);
+  const [urlTestResult, setUrlTestResult] = useState<"idle" | "valid" | "invalid">("idle");
+  const [streamWarning, setStreamWarning] = useState(false);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
   const customInputRef = useRef<HTMLInputElement>(null);
+  const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Determine which URL to show
+  const serverUrl = resolveStreamUrl(match!, activeServer);
+  const currentUrl = activeCustomUrl || serverUrl;
+
+  // Derived: auto-show custom input when no stream is available
+  const shouldShowCustomInput = showCustomInput || !currentUrl;
+
+  // Derived: iframe load state
+  const iframeLoadState: "loading" | "loaded" | "timeout" = streamWarning ? "timeout" : (currentUrl ? (iframeLoaded ? "loaded" : "loading") : "loading");
+
+  // Set up iframe load timeout
+  useEffect(() => {
+    if (!currentUrl) return;
+
+    // Clear any existing timeout
+    if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
+
+    // After 8 seconds, if still loading, show warning
+    loadTimeoutRef.current = setTimeout(() => {
+      if (!iframeLoaded) {
+        setStreamWarning(true);
+      }
+    }, 8000);
+
+    return () => {
+      if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
+    };
+  }, [currentUrl, iframeLoaded]);
 
   // Focus custom input when shown
   useEffect(() => {
-    if (showCustomInput && customInputRef.current) {
-      customInputRef.current.focus();
+    if (shouldShowCustomInput && customInputRef.current) {
+      // Small delay to let animation complete
+      const t = setTimeout(() => customInputRef.current?.focus(), 250);
+      return () => clearTimeout(t);
     }
-  }, [showCustomInput]);
+  }, [shouldShowCustomInput]);
+
+  const handleIframeLoad = useCallback(() => {
+    if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
+    setIframeLoaded(true);
+    setStreamWarning(false);
+  }, []);
 
   const handleServerChange = useCallback((serverId: string) => {
     setActiveServer(serverId);
-    setActiveCustomUrl(null); // clear custom override
+    setActiveCustomUrl(null);
+    setUrlTestResult("idle");
+    setIframeLoaded(false);
+    setStreamWarning(false);
   }, []);
 
   const handleCustomPlay = useCallback(() => {
     const trimmed = customUrl.trim();
     if (trimmed) {
-      // Convert YouTube watch URLs to embed
-      let embedUrl = trimmed;
-      if (trimmed.includes("youtube.com/watch")) {
-        const vid = new URL(trimmed).searchParams.get("v");
-        if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`;
-      } else if (trimmed.includes("youtu.be/")) {
-        const vid = trimmed.split("youtu.be/")[1]?.split("?")[0];
-        if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`;
-      } else if (trimmed.includes("twitch.tv/")) {
-        const channel = trimmed.split("twitch.tv/")[1]?.split("?")[0];
-        if (channel) embedUrl = `https://player.twitch.tv/?channel=${channel}&parent=${typeof window !== "undefined" ? window.location.hostname : "localhost"}`;
-      }
+      const embedUrl = convertToEmbedUrl(trimmed);
       setActiveCustomUrl(embedUrl);
+      setStreamWarning(false);
+      setUrlTestResult("idle");
+      setIframeLoaded(false);
     }
   }, [customUrl]);
+
+  const handleTestUrl = useCallback(() => {
+    const trimmed = customUrl.trim();
+    if (!trimmed) {
+      setUrlTestResult("invalid");
+      return;
+    }
+    if (isValidUrl(trimmed)) {
+      setUrlTestResult("valid");
+    } else {
+      setUrlTestResult("invalid");
+    }
+    // Auto-reset after 3 seconds
+    setTimeout(() => setUrlTestResult("idle"), 3000);
+  }, [customUrl]);
+
+  const handleRetryStream = useCallback(() => {
+    setActiveCustomUrl(null);
+    setStreamWarning(false);
+    setIframeLoaded(false);
+    setShowCustomInput(true);
+    if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
+  }, []);
 
   const handleBackdropClick = useCallback((e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose();
@@ -107,10 +226,6 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
   if (!match) return null;
 
   const isLive = match.status === "live";
-
-  // Determine which URL to show
-  const serverUrl = resolveStreamUrl(match, activeServer);
-  const currentUrl = activeCustomUrl || serverUrl;
 
   // Check which servers have URLs configured
   const serverUrlStatus = SPORT_SERVERS.map((s) => ({
@@ -221,42 +336,163 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
             <div className="relative w-full bg-black sport-player-area">
               <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
                 {currentUrl ? (
-                  <iframe
-                    key={`${match.id}-${activeServer}-${activeCustomUrl || ""}`}
-                    src={currentUrl}
-                    className="absolute inset-0 w-full h-full border-0"
-                    allow="autoplay; fullscreen; encrypted-media"
-                    allowFullScreen
-                    referrerPolicy="origin"
-                    title={`${match.team1} vs ${match.team2} — Live Stream`}
-                  />
+                  <>
+                    <iframe
+                      key={`${match.id}-${activeServer}-${activeCustomUrl || ""}`}
+                      src={currentUrl}
+                      className="absolute inset-0 w-full h-full border-0"
+                      allow="autoplay; fullscreen; encrypted-media"
+                      allowFullScreen
+                      referrerPolicy="origin"
+                      onLoad={handleIframeLoad}
+                      title={`${match.team1} vs ${match.team2} — Live Stream`}
+                    />
+                    {/* Loading spinner overlay */}
+                    {iframeLoadState === "loading" && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-10 h-10 rounded-full border-2 border-emerald-500/30 border-t-emerald-500 animate-spin" />
+                      </div>
+                    )}
+
+                    {/* Stream timeout warning banner */}
+                    <AnimatePresence>
+                      {streamWarning && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          className="absolute inset-x-0 top-0 z-10"
+                        >
+                          <div className="mx-3 mt-3 px-4 py-3 rounded-xl bg-amber-500/10 backdrop-blur-md border border-amber-500/20">
+                            <div className="flex items-start gap-3">
+                              <AlertCircle size={16} className="text-amber-400 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-amber-300 mb-1">Stream may not be available</p>
+                                <p className="text-[10px] text-amber-200/60">
+                                  The embedded source is taking too long to load. It may be blocked or offline. Try switching servers or paste a custom URL below.
+                                </p>
+                              </div>
+                              <button
+                                onClick={handleRetryStream}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[10px] font-bold transition-all cursor-pointer flex-shrink-0 border border-amber-500/20"
+                              >
+                                <RefreshCw size={10} />
+                                Use Custom URL
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </>
                 ) : (
-                  /* No stream available placeholder */
+                  /* No stream available — prominent placeholder with custom URL input */
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#111]">
-                    <div className="w-16 h-16 rounded-2xl bg-white/[0.04] flex items-center justify-center mb-4 border border-white/[0.06]">
-                      <MonitorPlay size={28} className="text-white/15" />
+                    <div className="w-20 h-20 rounded-2xl bg-white/[0.03] flex items-center justify-center mb-5 border border-white/[0.06]">
+                      <MonitorPlay size={32} className="text-white/10" />
                     </div>
-                    <p className="text-sm font-semibold text-white/40 mb-1">No stream available</p>
-                    <p className="text-xs text-white/20 mb-4">Paste a custom stream URL below</p>
-                    <button
-                      onClick={() => setShowCustomInput(true)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20 hover:bg-emerald-500/20 transition-all cursor-pointer"
-                    >
-                      <Link size={12} />
-                      Add Stream URL
-                    </button>
+                    <p className="text-base font-bold text-white/50 mb-1">No Stream Available</p>
+                    <p className="text-xs text-white/25 mb-1 text-center max-w-[280px]">
+                      This stream source is currently unavailable. Paste a custom stream URL below to watch.
+                    </p>
+                    <div className="flex items-center gap-1.5 mb-5">
+                      <Info size={10} className="text-emerald-400/50" />
+                      <span className="text-[10px] text-emerald-400/50">
+                        Supports YouTube, Twitch, M3U8/HLS, and embed URLs
+                      </span>
+                    </div>
+
+                    {/* Inline custom URL input right in the placeholder */}
+                    <div className="w-full max-w-[420px] px-6">
+                      <div className="relative">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 relative">
+                            <input
+                              ref={customInputRef}
+                              type="url"
+                              value={customUrl}
+                              onChange={(e) => { setCustomUrl(e.target.value); setUrlTestResult("idle"); }}
+                              onKeyDown={(e) => { if (e.key === "Enter") handleCustomPlay(); }}
+                              placeholder="https://youtube.com/watch?v=... or .m3u8 URL"
+                              className="w-full bg-white/[0.06] border border-white/[0.1] rounded-lg pl-3 pr-8 py-2.5 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+                            />
+                            {/* URL test result indicator */}
+                            {urlTestResult !== "idle" && (
+                              <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                                {urlTestResult === "valid" ? (
+                                  <Check size={14} className="text-emerald-400" />
+                                ) : (
+                                  <AlertCircle size={14} className="text-red-400" />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            onClick={handleTestUrl}
+                            disabled={!customUrl.trim()}
+                            className={`flex items-center gap-1.5 px-2.5 py-2.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer border ${
+                              customUrl.trim()
+                                ? "bg-white/[0.04] text-white/60 hover:bg-white/[0.08] hover:text-white border-white/[0.08]"
+                                : "bg-white/[0.02] text-white/15 cursor-not-allowed border-white/[0.04]"
+                            }`}
+                            title="Test URL format"
+                          >
+                            <Zap size={11} />
+                            Test
+                          </button>
+                          <button
+                            onClick={handleCustomPlay}
+                            disabled={!customUrl.trim()}
+                            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              customUrl.trim()
+                                ? "bg-emerald-500 text-black hover:bg-emerald-400 shadow-lg shadow-emerald-500/20"
+                                : "bg-white/[0.04] text-white/20 cursor-not-allowed"
+                            }`}
+                          >
+                            <Play size={12} fill="currentColor" />
+                            Play
+                          </button>
+                        </div>
+                        {/* URL validation feedback */}
+                        <AnimatePresence>
+                          {urlTestResult === "invalid" && (
+                            <motion.p
+                              initial={{ opacity: 0, y: -4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -4 }}
+                              className="text-[9px] text-red-400/80 mt-1.5 pl-1"
+                            >
+                              Invalid URL format. Please enter a valid URL (e.g. https://...)
+                            </motion.p>
+                          )}
+                          {urlTestResult === "valid" && (
+                            <motion.p
+                              initial={{ opacity: 0, y: -4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -4 }}
+                              className="text-[9px] text-emerald-400/80 mt-1.5 pl-1"
+                            >
+                              URL format looks valid. Click Play to start streaming.
+                            </motion.p>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                      <p className="text-[9px] text-white/15 mt-2 text-center">
+                        Paste any streaming URL — YouTube links are auto-converted to embeds. M3U8/HLS streams are supported.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
 
               {/* Currently playing indicator */}
               {currentUrl && activeCustomUrl && (
-                <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/90 backdrop-blur-sm">
+                <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/90 backdrop-blur-sm z-20">
                   <ExternalLink size={10} className="text-white" />
                   <span className="text-[10px] font-bold text-white uppercase tracking-wider">Custom Stream</span>
                 </div>
               )}
-              {currentUrl && !activeCustomUrl && (
+              {currentUrl && !activeCustomUrl && iframeLoadState === "loaded" && (
                 <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-sm border border-white/[0.06]">
                   <MonitorPlay size={10} className="text-emerald-400" />
                   <span className="text-[10px] font-bold text-white/60 uppercase tracking-wider">
@@ -266,9 +502,9 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
               )}
             </div>
 
-            {/* ===== CUSTOM STREAM URL INPUT ===== */}
+            {/* ===== CUSTOM STREAM URL INPUT (for when stream IS available) ===== */}
             <AnimatePresence>
-              {showCustomInput && (
+              {shouldShowCustomInput && currentUrl && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
@@ -283,22 +519,46 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
                         Custom Stream URL
                       </span>
                       <button
-                        onClick={() => { setShowCustomInput(false); setCustomUrl(""); setActiveCustomUrl(null); }}
+                        onClick={() => { setShowCustomInput(false); setCustomUrl(""); setActiveCustomUrl(null); setUrlTestResult("idle"); }}
                         className="ml-auto text-white/20 hover:text-white/50 transition-colors cursor-pointer"
                       >
                         <X size={12} />
                       </button>
                     </div>
                     <div className="flex items-center gap-2">
-                      <input
-                        ref={customInputRef}
-                        type="url"
-                        value={customUrl}
-                        onChange={(e) => setCustomUrl(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter") handleCustomPlay(); }}
-                        placeholder="Paste YouTube, Twitch, or any embed URL..."
-                        className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 transition-all"
-                      />
+                      <div className="flex-1 relative">
+                        <input
+                          ref={customInputRef}
+                          type="url"
+                          value={customUrl}
+                          onChange={(e) => { setCustomUrl(e.target.value); setUrlTestResult("idle"); }}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleCustomPlay(); }}
+                          placeholder="Paste YouTube, Twitch, M3U8/HLS, or any embed URL..."
+                          className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg pl-3 pr-8 py-2 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+                        />
+                        {urlTestResult !== "idle" && (
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                            {urlTestResult === "valid" ? (
+                              <Check size={14} className="text-emerald-400" />
+                            ) : (
+                              <AlertCircle size={14} className="text-red-400" />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={handleTestUrl}
+                        disabled={!customUrl.trim()}
+                        className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer border ${
+                          customUrl.trim()
+                            ? "bg-white/[0.04] text-white/60 hover:bg-white/[0.08] hover:text-white border-white/[0.08]"
+                            : "bg-white/[0.02] text-white/15 cursor-not-allowed border-white/[0.04]"
+                        }`}
+                        title="Test URL format"
+                      >
+                        <Zap size={11} />
+                        Test
+                      </button>
                       <button
                         onClick={handleCustomPlay}
                         disabled={!customUrl.trim()}
@@ -312,8 +572,31 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
                         Play
                       </button>
                     </div>
+                    {/* URL validation feedback */}
+                    <AnimatePresence>
+                      {urlTestResult === "invalid" && (
+                        <motion.p
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          className="text-[9px] text-red-400/80 mt-1.5"
+                        >
+                          Invalid URL format. Please enter a valid URL (e.g. https://...)
+                        </motion.p>
+                      )}
+                      {urlTestResult === "valid" && (
+                        <motion.p
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          className="text-[9px] text-emerald-400/80 mt-1.5"
+                        >
+                          URL format looks valid. Click Play to start streaming.
+                        </motion.p>
+                      )}
+                    </AnimatePresence>
                     <p className="text-[9px] text-white/15 mt-1.5">
-                      Supports YouTube, Twitch, Dailymotion, or any direct embed URL. YouTube watch links are auto-converted to embeds.
+                      Supports YouTube, Twitch, Dailymotion, M3U8/HLS streams, or any direct embed URL. YouTube watch links are auto-converted to embeds.
                     </p>
                   </div>
                 </motion.div>
@@ -330,13 +613,12 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
               <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-3">
                 {serverUrlStatus.map((server) => {
                   const ServerIcon = server.icon;
-                  const isActive = activeServer === activeCustomUrl ? false : activeServer === server.id && !activeCustomUrl;
                   const isActuallyActive = activeServer === server.id && !activeCustomUrl;
 
                   return (
                     <button
                       key={server.id}
-                      onClick={() => { setActiveServer(server.id); setActiveCustomUrl(null); setShowCustomInput(false); }}
+                      onClick={() => { setActiveServer(server.id); setActiveCustomUrl(null); setShowCustomInput(false); setUrlTestResult("idle"); }}
                       className={`relative flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 cursor-pointer ${
                         isActuallyActive
                           ? "bg-emerald-500/15 text-emerald-400 border-2 border-emerald-500/60 shadow-lg shadow-emerald-500/10"
@@ -375,16 +657,26 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
                 })}
               </div>
 
-              {/* Custom URL toggle */}
-              {!showCustomInput && (
+              {/* Custom URL toggle (only when stream IS available and input is hidden) */}
+              {!shouldShowCustomInput && currentUrl && (
                 <button
                   onClick={() => setShowCustomInput(true)}
                   className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-white/[0.02] border border-dashed border-white/[0.08] hover:border-emerald-500/30 hover:bg-emerald-500/5 text-white/30 hover:text-emerald-400 text-xs font-medium transition-all cursor-pointer"
                 >
                   <Link size={12} />
                   <span>Paste Custom Stream URL</span>
-                  <span className="text-[9px] text-white/15 ml-1">(YouTube, Twitch, etc.)</span>
+                  <span className="text-[9px] text-white/15 ml-1">(YouTube, Twitch, M3U8, etc.)</span>
                 </button>
+              )}
+
+              {/* Show "stream unavailable" hint when no URL */}
+              {!currentUrl && (
+                <div className="flex items-center gap-2 py-2 px-3 rounded-lg bg-amber-500/[0.06] border border-amber-500/10">
+                  <Info size={12} className="text-amber-400/60 flex-shrink-0" />
+                  <span className="text-[10px] text-amber-400/50">
+                    No pre-configured streams available for this match. Use the custom URL input above to watch.
+                  </span>
+                </div>
               )}
             </div>
           </motion.div>
