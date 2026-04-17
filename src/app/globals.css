@@ -248,3 +248,73 @@
 .score-flash {
   animation: scoreFlash 3s ease-in-out infinite;
 }
+
+/* ================================================================ */
+/*  PREMIUM LIVE SPORTS — GREEN / WHITE THEME                        */
+/* ================================================================ */
+
+/* Hero card subtle glow */
+.sport-hero-card {
+  box-shadow: 0 0 80px -20px rgba(34, 197, 94, 0.1), 0 0 0 1px rgba(34, 197, 94, 0.05);
+}
+.sport-hero-card:hover {
+  box-shadow: 0 0 100px -20px rgba(34, 197, 94, 0.15), 0 0 0 1px rgba(34, 197, 94, 0.1);
+}
+
+/* Match card hover glow */
+.sport-match-card {
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+}
+.sport-match-card:hover {
+  box-shadow: 0 8px 32px -8px rgba(34, 197, 94, 0.08);
+}
+
+/* Team logo subtle ring animation */
+.sport-team-logo {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Score display glow */
+.sport-score-text {
+  text-shadow: 0 0 40px rgba(34, 197, 94, 0.3);
+}
+
+/* Modal premium shadow */
+.sport-modal-shadow {
+  box-shadow:
+    0 0 0 1px rgba(34, 197, 94, 0.08),
+    0 25px 60px -12px rgba(0, 0, 0, 0.7),
+    0 0 120px -40px rgba(34, 197, 94, 0.08);
+}
+
+/* Modal header gradient */
+.sport-modal-header {
+  background: linear-gradient(135deg, #0c0c0c 0%, #111111 50%, #0a0f0d 100%);
+}
+
+/* Modal player area subtle inner glow */
+.sport-player-area {
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.5);
+}
+
+/* Modal footer gradient */
+.sport-modal-footer {
+  background: linear-gradient(135deg, #0a0a0a 0%, #0f0f0f 100%);
+}
+
+/* Green accent button hover pulse */
+@keyframes greenPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  50% { box-shadow: 0 0 20px 4px rgba(34, 197, 94, 0.15); }
+}
+
+.sport-green-pulse {
+  animation: greenPulse 2.5s ease-in-out infinite;
+}
+
+/* Premium card hover border shimmer */
+@keyframes borderShimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
