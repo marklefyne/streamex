@@ -40,8 +40,6 @@ export async function POST(request: Request) {
       const updateData: Record<string, string | null> = {
         current_content: title || content_id?.toString() || "Unknown",
         content_type: content_type,
-        content_id: content_id?.toString() || null,
-        poster_url: poster_url || null,
         last_active: new Date().toISOString(),
       };
 

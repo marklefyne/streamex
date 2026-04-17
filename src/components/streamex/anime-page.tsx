@@ -574,37 +574,47 @@ export function AnimePage({ onSelect }: AnimePageProps) {
           body: JSON.stringify({
             mal_id: anime.malId,
             title: anime.title,
+            japanese_title: anime.japaneseTitle,
             year: anime.year,
             episodes: anime.episodes,
+            studios: anime.studios,
           }),
         });
 
         if (res.ok) {
           const resolved = await res.json();
-          const cardItem: CardItem = {
-            id: `tv-${resolved.tmdb_id}`,
-            tmdb_id: resolved.tmdb_id,
-            title: resolved.title ?? anime.title,
-            year: resolved.year ?? anime.year,
-            type: resolved.type ?? "TV Series",
-            rating: resolved.rating ?? anime.rating,
-            genres: resolved.genres ?? anime.genres,
-            description: resolved.description ?? anime.description,
-            posterImage: resolved.posterImage ?? anime.posterImage,
-            backdropImage: resolved.backdropImage ?? anime.bannerImage,
-            numberOfSeasons: resolved.numberOfSeasons,
-            numberOfEpisodes: resolved.numberOfEpisodes,
-            seasonEpisodes: resolved.seasonEpisodes,
-          };
-          setResolving(false);
-          onSelect(cardItem);
-          return;
+
+          // Only accept if we got a valid tmdb_id (rejects low-confidence matches)
+          if (resolved.tmdb_id && !resolved.error) {
+            const cardItem: CardItem = {
+              id: `tv-${resolved.tmdb_id}`,
+              tmdb_id: resolved.tmdb_id,
+              title: resolved.title ?? anime.title,
+              year: resolved.year ?? anime.year,
+              type: "TV Series",
+              rating: resolved.rating ?? anime.rating,
+              genres: resolved.genres?.length ? resolved.genres : anime.genres,
+              description: resolved.description ?? anime.description,
+              posterImage: resolved.posterImage ?? anime.posterImage,
+              backdropImage: resolved.backdropImage ?? anime.bannerImage,
+              numberOfSeasons: resolved.numberOfSeasons,
+              numberOfEpisodes: resolved.numberOfEpisodes,
+              seasonEpisodes: resolved.seasonEpisodes,
+              malId: anime.malId,
+            };
+            setResolving(false);
+            onSelect(cardItem);
+            return;
+          }
+
+          // Resolve returned error (low confidence) — try using MAL ID directly with vidsrc
+          console.log(`[Anime] TMDB resolve had low confidence for "${anime.title}" (MAL: ${anime.malId}), using fallback`);
         }
       } catch {
-        // Resolve failed — fall back to original anime data
+        // Resolve failed — fall back
       }
 
-      // Fallback: use original anime data as TV Series
+      // Fallback: use original anime data as TV Series with MAL ID
       setResolving(false);
       const cardItem: CardItem = {
         id: anime.id,
@@ -617,6 +627,7 @@ export function AnimePage({ onSelect }: AnimePageProps) {
         description: anime.description,
         posterImage: anime.posterImage,
         backdropImage: anime.bannerImage,
+        malId: anime.malId,
       };
       onSelect(cardItem);
     },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronDown,
@@ -241,6 +241,51 @@ export function LiveSports() {
   const [dateDropdown, setDateDropdown] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<SportMatch | null>(null);
   const [expandedCard, setExpandedCard] = useState<number | null>(null);
+  const [matchStreams, setMatchStreams] = useState<Map<number, Record<string, string>>>(new Map());
+
+  // Fetch streams from API for a specific match
+  const handleWatchMatch = useCallback(async (match: SportMatch) => {
+    // If match already has stream URLs, open player immediately
+    const hasStreams = match.stream_urls && Object.values(match.stream_urls).some((v) => v);
+
+    if (!hasStreams) {
+      // Try to fetch streams from API
+      try {
+        const res = await fetch(`/api/sports/streams?match_id=${match.id}&sport=${encodeURIComponent(match.sport)}&team1=${encodeURIComponent(match.team1)}&team2=${encodeURIComponent(match.team2)}`);
+        if (res.ok) {
+          const data = await res.json();
+          const fetchedStreams: Record<string, string> = {};
+          if (data.streams && Array.isArray(data.streams)) {
+            data.streams.forEach((stream: { server: string; url: string }, idx: number) => {
+              const key = stream.server || `server-${idx + 1}`;
+              fetchedStreams[key] = stream.url;
+            });
+          }
+          // If we got streams, update the cache and use them
+          if (Object.keys(fetchedStreams).length > 0) {
+            setMatchStreams((prev) => {
+              const next = new Map(prev);
+              next.set(match.id, fetchedStreams);
+              return next;
+            });
+            // Open player with fetched streams
+            setSelectedMatch({ ...match, stream_urls: { ...match.stream_urls, ...fetchedStreams } });
+            return;
+          }
+        }
+      } catch {
+        // API failed, open with existing data (which will show custom URL input)
+      }
+    }
+
+    // Merge cached streams if available
+    const cached = matchStreams.get(match.id);
+    const enrichedMatch = cached
+      ? { ...match, stream_urls: { ...match.stream_urls, ...cached } }
+      : match;
+
+    setSelectedMatch(enrichedMatch);
+  }, [matchStreams]);
 
   const liveCount = allMatches.filter((m) => m.status === "live").length;
 
@@ -401,7 +446,7 @@ export function LiveSports() {
 
               {/* === FEATURED HERO CARD === */}
               {isFeatured && items.length > 0 && (
-                <FeaturedHeroCard match={items[0]} onWatch={() => setSelectedMatch(items[0])} />
+                <FeaturedHeroCard match={items[0]} onWatch={() => handleWatchMatch(items[0])} />
               )}
 
               {/* === MATCH CARD GRID === */}
@@ -418,7 +463,7 @@ export function LiveSports() {
                       variants={cardVariants}
                       isExpanded={expandedCard === match.id}
                       onToggleExpand={() => setExpandedCard(expandedCard === match.id ? null : match.id)}
-                      onWatchNow={() => setSelectedMatch(match)}
+                      onWatchNow={() => handleWatchMatch(match)}
                     />
                   ))}
                 </motion.div>

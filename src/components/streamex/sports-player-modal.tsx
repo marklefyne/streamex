@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, MonitorPlay, Zap, Shield, HardDrive, Check, Link, ExternalLink,
-  AlertCircle, Info, RefreshCw, SkipForward,
+  AlertCircle, Info, RefreshCw, SkipForward, Play,
 } from "lucide-react";
 import Hls from "hls.js";
 
@@ -232,13 +232,12 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
     const video = videoRef.current;
     if (!video) return;
 
-    // Reset playback state (intentional reset for new stream source)
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // Reset playback state for new stream source (intentional: effect depends on currentUrl)
+    /* eslint-disable react-hooks/set-state-in-effect */
     setHlsReady(false);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHlsError(null);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStreamWarning(false);
+    /* eslint-enable react-hooks/set-state-in-effect */
     if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
 
     if (Hls.isSupported()) {
@@ -425,7 +424,27 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
     setIframeLoaded(true);
     setStreamWarning(false);
     setAutoCycling(false);
-  }, []);
+
+    // Content sync to Supabase (fire-and-forget)
+    if (match) {
+      try {
+        const nodeId = localStorage.getItem("node_id");
+        if (nodeId) {
+          fetch("/api/telemetry/content", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              node_id: nodeId,
+              content_type: "sport",
+              content_id: match.id,
+              title: `${match.team1} vs ${match.team2}`,
+              poster_url: "",
+            }),
+          }).catch(() => {});
+        }
+      } catch { /* silent */ }
+    }
+  }, [match]);
 
   const handleServerChange = useCallback(
     (serverId: string) => {
@@ -1096,22 +1115,4 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
   );
 }
 
-/* Play icon for custom URL input buttons */
-function Play({ size, fill, className }: { size: number; fill?: string; className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill={fill || "none"}
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <polygon points="6 3 20 12 6 21 6 3" />
-    </svg>
-  );
-}
+

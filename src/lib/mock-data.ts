@@ -13,6 +13,8 @@ export interface LiveMediaItem {
   numberOfSeasons?: number;
   numberOfEpisodes?: number;
   seasonEpisodes?: Record<number, number>;
+  /** MyAnimeList ID — used for anime precise matching */
+  malId?: number;
 }
 
 // Legacy mock data interface (backward compat)
