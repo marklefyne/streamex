@@ -207,12 +207,12 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
             {[
-              { name: "Server 1", sub: "VidSrc.to" },
-              { name: "Server 2", sub: "VidSrc.me" },
-              { name: "Server 3", sub: "2Embed.cc" },
-              { name: "Server 4", sub: "VidSrc.cc" },
-              { name: "Server 5", sub: "AutoEmbed" },
-              { name: "Server 6", sub: "Embed.su" },
+              { name: "Server 1", sub: "VidSrc.me" },
+              { name: "Server 2", sub: "MoviesAPI" },
+              { name: "Server 3", sub: "VidSrc.pm" },
+              { name: "Server 4", sub: "VidSrc.dev" },
+              { name: "Server 5", sub: "VidSrc.to" },
+              { name: "Server 6", sub: "AutoEmbed" },
             ].map((server) => (
               <button
                 key={server.name}

@@ -41,36 +41,46 @@ export function getEmbedUrl(
   const e = episode ?? 1;
 
   switch (serverId) {
-    // Primary providers
-    case "vidsrc-to":
-      return mediaType === "movie"
-        ? `https://vidsrc.to/embed/movie/${tmdbId}`
-        : `https://vidsrc.to/embed/tv/${tmdbId}/${s}/${e}`;
+    // Server 1: vidsrc.me → redirects to vidsrcme.ru (most reliable)
     case "vidsrc-me":
       return mediaType === "movie"
         ? `https://vidsrc.me/embed/movie/${tmdbId}`
         : `https://vidsrc.me/embed/tv/${tmdbId}/${s}/${e}`;
-    case "2embed":
+
+    // Server 2: moviesapi.to (shows correct title)
+    case "moviesapi":
       return mediaType === "movie"
-        ? `https://www.2embed.cc/embed/${tmdbId}`
-        : `https://www.2embed.cc/embed/${tmdbId}/${s}/${e}`;
-    // Backup providers
-    case "vidsrc-cc":
+        ? `https://moviesapi.to/movie/${tmdbId}`
+        : `https://moviesapi.to/tv/${tmdbId}-${s}-${e}`;
+
+    // Server 3: vidsrc.pm (proxy-based player)
+    case "vidsrc-pm":
       return mediaType === "movie"
-        ? `https://vidsrc.cc/v2/embed/movie/${tmdbId}`
-        : `https://vidsrc.cc/v2/embed/tv/${tmdbId}/${s}/${e}`;
+        ? `https://vidsrc.pm/embed/movie/${tmdbId}`
+        : `https://vidsrc.pm/embed/tv/${tmdbId}/${s}/${e}`;
+
+    // Server 4: vidsrc.dev
+    case "vidsrc-dev":
+      return mediaType === "movie"
+        ? `https://vidsrc.dev/embed/movie/${tmdbId}`
+        : `https://vidsrc.dev/embed/tv/${tmdbId}/${s}/${e}`;
+
+    // Server 5: vidsrc.to (may 403 in some regions)
+    case "vidsrc-to":
+      return mediaType === "movie"
+        ? `https://vidsrc.to/embed/movie/${tmdbId}`
+        : `https://vidsrc.to/embed/tv/${tmdbId}/${s}/${e}`;
+
+    // Server 6: autoembed (fallback)
     case "autoembed":
       return mediaType === "movie"
         ? `https://player.autoembed.cc/embed/movie/${tmdbId}`
         : `https://player.autoembed.cc/embed/tv/${tmdbId}/${s}/${e}`;
-    case "embed-su":
-      return mediaType === "movie"
-        ? `https://embed.su/embed/movie/${tmdbId}`
-        : `https://embed.su/embed/tv/${tmdbId}/${s}/${e}`;
+
     default:
       return mediaType === "movie"
-        ? `https://vidsrc.to/embed/movie/${tmdbId}`
-        : `https://vidsrc.to/embed/tv/${tmdbId}/${s}/${e}`;
+        ? `https://vidsrc.me/embed/movie/${tmdbId}`
+        : `https://vidsrc.me/embed/tv/${tmdbId}/${s}/${e}`;
   }
 }
 
@@ -81,10 +91,10 @@ export interface ServerOption {
 }
 
 export const SERVERS: ServerOption[] = [
-  { id: "vidsrc-to", name: "Server 1", description: "VidSrc.to" },
-  { id: "vidsrc-me", name: "Server 2", description: "VidSrc.me" },
-  { id: "2embed", name: "Server 3", description: "2Embed.cc" },
-  { id: "vidsrc-cc", name: "Server 4", description: "VidSrc.cc" },
-  { id: "autoembed", name: "Server 5", description: "AutoEmbed" },
-  { id: "embed-su", name: "Server 6", description: "Embed.su" },
+  { id: "vidsrc-me", name: "Server 1", description: "VidSrc.me" },
+  { id: "moviesapi", name: "Server 2", description: "MoviesAPI" },
+  { id: "vidsrc-pm", name: "Server 3", description: "VidSrc.pm" },
+  { id: "vidsrc-dev", name: "Server 4", description: "VidSrc.dev" },
+  { id: "vidsrc-to", name: "Server 5", description: "VidSrc.to" },
+  { id: "autoembed", name: "Server 6", description: "AutoEmbed" },
 ];
