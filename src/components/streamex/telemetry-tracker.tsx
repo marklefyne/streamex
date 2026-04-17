@@ -2,22 +2,18 @@
 
 import { useEffect, useRef } from "react";
 
-const NODE_KEY = "flux_node_id";
+const NODE_KEY = "node_id";
 const TELEMETRY_ENDPOINT = "/api/telemetry/node";
 
 function getOrCreateNodeId(): string {
   try {
     const existing = localStorage.getItem(NODE_KEY);
     if (existing) return existing;
-    const fresh =
-      "n_" +
-      Date.now().toString(36) +
-      "_" +
-      Math.random().toString(36).slice(2, 10);
+    const fresh = "node_" + Math.random().toString(36).substr(2, 9);
     localStorage.setItem(NODE_KEY, fresh);
     return fresh;
   } catch {
-    return "n_fallback_" + Math.random().toString(36).slice(2, 10);
+    return "node_" + Math.random().toString(36).substr(2, 9);
   }
 }
 

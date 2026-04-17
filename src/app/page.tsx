@@ -56,7 +56,7 @@ export default function Home() {
   // Load stores on mount
   useEffect(() => {
     try {
-      const nodeId = localStorage.getItem("flux_node_id") || "";
+      const nodeId = localStorage.getItem("node_id") || "";
       if (nodeId) {
         loadFavorites(nodeId);
         loadHistory(nodeId);

@@ -43,7 +43,7 @@ function loadFromLocalStorage(): FavoriteItem[] {
 
 function getNodeId(): string {
   try {
-    return localStorage.getItem("flux_node_id") || "";
+    return localStorage.getItem("node_id") || "";
   } catch {
     return "";
   }
