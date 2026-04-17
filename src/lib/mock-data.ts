@@ -56,11 +56,11 @@ export function getEmbedUrl(
         ? `https://vidsrc.to/embed/movie/${tmdbId}`
         : `https://vidsrc.to/embed/tv/${tmdbId}/${s}/${e}`;
 
-    // 2Embed.cc — uses TMDB path params, fast and reliable
-    case "2embed-cc":
+    // VidSrc.cc — uses TMDB path params, reliable alternative
+    case "vidsrc-cc":
       return mediaType === "movie"
-        ? `https://www.2embed.cc/embed/${tmdbId}`
-        : `https://www.2embed.cc/embed/${tmdbId}/${s}/${e}`;
+        ? `https://vidsrc.cc/embed/movie/${tmdbId}`
+        : `https://vidsrc.cc/embed/tv/${tmdbId}/${s}/${e}`;
 
     // Embed.su — uses TMDB path params, subtitle support
     case "embed-su":
@@ -90,9 +90,9 @@ export interface ServerOption {
 }
 
 export const SERVERS: ServerOption[] = [
-  { id: "vidsrc-me",   name: "VidSrc",       description: "vidsrc.me",       tier: "primary" },
-  { id: "vidsrc-to",   name: "VidSrc",       description: "vidsrc.to",       hasSubtitles: true, tier: "primary" },
-  { id: "2embed-cc",   name: "2Embed",       description: "2embed.cc",       tier: "primary" },
-  { id: "embed-su",    name: "Embed",        description: "embed.su",        hasSubtitles: true, tier: "primary" },
-  { id: "superembed",  name: "SuperEmbed",   description: "superembed.stream", tier: "fallback" },
+  { id: "vidsrc-me",   name: "Flux Stream",  description: "vidsrc.me",       tier: "primary" },
+  { id: "vidsrc-to",   name: "Server 2",     description: "vidsrc.to",       hasSubtitles: true, tier: "primary" },
+  { id: "embed-su",    name: "Server 3",     description: "embed.su",        hasSubtitles: true, tier: "primary" },
+  { id: "superembed",  name: "Server 4",     description: "superembed.stream", tier: "primary" },
+  { id: "vidsrc-cc",   name: "Server 5",     description: "vidsrc.cc",       tier: "primary" },
 ];

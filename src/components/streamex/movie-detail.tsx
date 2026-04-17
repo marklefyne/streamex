@@ -240,7 +240,7 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
                   className="text-streamex-text-secondary group-hover:text-streamex-accent transition-colors flex-shrink-0"
                 />
                 <div className="text-left min-w-0">
-                  <p className="text-xs font-semibold truncate">{server.name}</p>
+                  <p className="text-sm font-bold truncate">{server.name}</p>
                   <p className="text-[10px] text-streamex-text-secondary truncate">{server.description}</p>
                 </div>
               </button>

@@ -312,8 +312,7 @@ export function VideoPlayer({ item, onClose, initialServerIndex = 0 }: VideoPlay
                   {isPlaying && (
                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
                   )}
-                  <span className="font-semibold">{server.name}</span>
-                  <span className="text-[10px] opacity-70">{server.description}</span>
+                  <span className="font-bold">{server.name}</span>
                   {server.hasSubtitles && (
                     <span className="text-[9px] text-emerald-400 font-bold uppercase">CC</span>
                   )}
