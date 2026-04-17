@@ -92,7 +92,25 @@ export function VideoPlayer({ item, onClose, onMiniPlayer, initialServerIndex = 
       isTV ? s : undefined,
       isTV ? e : undefined
     );
-  }, [tmdbId, item.title, item.type, item.posterImage, isTV, addToHistory]);
+
+    // Content sync to Supabase (fire-and-forget)
+    try {
+      const nodeId = localStorage.getItem("node_id");
+      if (nodeId) {
+        fetch("/api/telemetry/content", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            node_id: nodeId,
+            content_type: item.type === "Anime" ? "anime" : mediaType,
+            content_id: tmdbId,
+            title: item.title,
+            poster_url: item.posterImage || "",
+          }),
+        }).catch(() => {});
+      }
+    } catch { /* silent */ }
+  }, [tmdbId, item.title, item.type, item.posterImage, isTV, addToHistory, mediaType]);
 
   // Smart fallback: auto-try next server on timeout
   const tryNextServer = useCallback(() => {

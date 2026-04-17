@@ -561,16 +561,57 @@ export function AnimePage({ onSelect }: AnimePageProps) {
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [anyError, setAnyError] = useState(false);
+  const [resolving, setResolving] = useState(false);
 
-  // Convert AnimeItem to CardItem for onSelect
+  // Resolve anime MAL ID to TMDB ID, then convert to CardItem for onSelect
   const handleAnimeSelect = useCallback(
-    (anime: AnimeItem) => {
+    async (anime: AnimeItem) => {
+      setResolving(true);
+      try {
+        const res = await fetch("/api/anime/resolve", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mal_id: anime.malId,
+            title: anime.title,
+            year: anime.year,
+            episodes: anime.episodes,
+          }),
+        });
+
+        if (res.ok) {
+          const resolved = await res.json();
+          const cardItem: CardItem = {
+            id: `tv-${resolved.tmdb_id}`,
+            tmdb_id: resolved.tmdb_id,
+            title: resolved.title ?? anime.title,
+            year: resolved.year ?? anime.year,
+            type: resolved.type ?? "TV Series",
+            rating: resolved.rating ?? anime.rating,
+            genres: resolved.genres ?? anime.genres,
+            description: resolved.description ?? anime.description,
+            posterImage: resolved.posterImage ?? anime.posterImage,
+            backdropImage: resolved.backdropImage ?? anime.bannerImage,
+            numberOfSeasons: resolved.numberOfSeasons,
+            numberOfEpisodes: resolved.numberOfEpisodes,
+            seasonEpisodes: resolved.seasonEpisodes,
+          };
+          setResolving(false);
+          onSelect(cardItem);
+          return;
+        }
+      } catch {
+        // Resolve failed — fall back to original anime data
+      }
+
+      // Fallback: use original anime data as TV Series
+      setResolving(false);
       const cardItem: CardItem = {
         id: anime.id,
         tmdb_id: anime.malId,
         title: anime.title,
         year: anime.year,
-        type: "Anime",
+        type: "TV Series",
         rating: anime.rating,
         genres: anime.genres,
         description: anime.description,
@@ -886,6 +927,23 @@ export function AnimePage({ onSelect }: AnimePageProps) {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Resolving overlay — shown while looking up TMDB ID */}
+      <AnimatePresence>
+        {resolving && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center"
+          >
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="animate-spin text-emerald-400" size={32} />
+              <p className="text-sm text-white/70">Resolving anime…</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <ScrollToTop />
     </div>

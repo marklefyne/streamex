@@ -949,6 +949,24 @@ function ReaderView({
         const data: ReaderPagesResponse = await res.json();
         if (!cancelled) {
           setPages(data.pages || []);
+
+          // Content sync to Supabase (fire-and-forget)
+          try {
+            const nodeId = localStorage.getItem("node_id");
+            if (nodeId) {
+              fetch("/api/telemetry/content", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  node_id: nodeId,
+                  content_type: "manga",
+                  content_id: manga.id,
+                  title: manga.title,
+                  poster_url: manga.coverUrl || "",
+                }),
+              }).catch(() => {});
+            }
+          } catch { /* silent */ }
         }
       } catch (err) {
         if (!cancelled) {
