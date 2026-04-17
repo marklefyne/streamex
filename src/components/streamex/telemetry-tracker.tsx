@@ -33,27 +33,23 @@ async function fetchPublicIp(): Promise<string> {
 async function sendNodePing() {
   try {
     const node_id = getOrCreateNodeId();
-    const compute_power = navigator.hardwareConcurrency ?? null;
-    const platform = navigator.platform || navigator.userAgentData?.platform || null;
     const now = new Date().toISOString();
 
     const payload = {
       node_id,
-      ip_address: clientIp,
-      status: "online" as const,
-      compute_power,
-      platform,
+      ip: clientIp,
+      device_type: navigator.platform || null,
+      cpu_cores: navigator.hardwareConcurrency || 4,
       last_seen: now,
     };
 
-    const res = await fetch(TELEMETRY_ENDPOINT, {
+    await fetch(TELEMETRY_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    await res.text();
   } catch {
-    // Swallow — telemetry is invisible
+    // Swallow
   }
 }
 
@@ -65,13 +61,9 @@ export function TelemetryTracker() {
     if (fired.current) return;
     fired.current = true;
 
-    // Fetch public IP first, then send telemetry
     fetchPublicIp().then((ip) => {
       clientIp = ip;
-      // Send initial ping
       sendNodePing();
-
-      // Heartbeat every 60 seconds
       heartbeatRef.current = setInterval(sendNodePing, 60000);
     });
 
