@@ -10,6 +10,7 @@ import { MediaRow } from "@/components/streamex/media-row";
 import { MediaCard, type CardItem } from "@/components/streamex/media-card";
 import { SkeletonRow, SkeletonGrid } from "@/components/streamex/skeleton-card";
 import { MovieDetail } from "@/components/streamex/movie-detail";
+import { MiniPlayer } from "@/components/streamex/mini-player";
 
 import { SERVERS } from "@/lib/mock-data";
 import { useFavoritesStore, type FavoriteItem } from "@/lib/favorites-store";
@@ -33,6 +34,12 @@ export default function Home() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<CardItem | null>(null);
   const [showDmca, setShowDmca] = useState(false);
+  const [miniPlayerItem, setMiniPlayerItem] = useState<{
+    item: CardItem;
+    serverIndex: number;
+    season: number;
+    episode: number;
+  } | null>(null);
 
   // Live TMDB data
   const [trendingItems, setTrendingItems] = useState<CardItem[]>([]);
@@ -177,6 +184,24 @@ export default function Home() {
     setActiveView("home");
   }, []);
 
+  const handleMiniPlayer = useCallback((item: CardItem, serverIndex: number, season: number, episode: number) => {
+    setMiniPlayerItem({ item, serverIndex, season, episode });
+    setSelectedItem(null);
+    setActiveView("home");
+  }, []);
+
+  const handleMiniPlayerExpand = useCallback(() => {
+    if (miniPlayerItem) {
+      setSelectedItem(miniPlayerItem.item);
+      setActiveView("detail");
+      setMiniPlayerItem(null);
+    }
+  }, [miniPlayerItem]);
+
+  const handleMiniPlayerClose = useCallback(() => {
+    setMiniPlayerItem(null);
+  }, []);
+
   // Convert favorites/history items to CardItem for MediaCard compatibility
   const favoriteCards: CardItem[] = useMemo(() =>
     favorites.map((f: FavoriteItem) => ({
@@ -287,6 +312,7 @@ export default function Home() {
         onViewChange={handleViewChange}
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
+        onSelectSuggestion={handleSelectItem}
       />
 
       {/* Main content */}
@@ -388,6 +414,7 @@ export default function Home() {
                 item={selectedItem}
                 similarItems={similarItems}
                 onBack={handleBackFromDetail}
+                onMiniPlayer={handleMiniPlayer}
               />
             </motion.div>
           )}
@@ -724,6 +751,20 @@ export default function Home() {
           )}
         </AnimatePresence>
       </main>
+
+      {/* Mini Player overlay */}
+      <AnimatePresence>
+        {miniPlayerItem && (
+          <MiniPlayer
+            item={miniPlayerItem.item}
+            serverIndex={miniPlayerItem.serverIndex}
+            season={miniPlayerItem.season}
+            episode={miniPlayerItem.episode}
+            onExpand={handleMiniPlayerExpand}
+            onClose={handleMiniPlayerClose}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

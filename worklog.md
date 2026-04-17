@@ -255,3 +255,47 @@ Stage Summary:
   alter table content_views enable row level security;
   create policy "Allow anon all" on content_views for all using (true) with check (true);
   ```
+
+---
+Task ID: 9
+Agent: Main Agent
+Task: Add YouTube-style Mini Player — floating draggable overlay for continuous watching
+
+Work Log:
+- Created /src/components/streamex/mini-player.tsx — full-featured draggable mini player:
+  - Fixed position overlay with default bottom-right placement (right: 24px, bottom: 24px)
+  - Default size: 400×225px (16:9) on desktop, full-width-minus-margins on mobile
+  - Draggable title bar with GripVertical handle, tracks mouse/touch events for repositioning
+  - Uses position: fixed with left/top calculated from window dimensions on mount and resize
+  - Title bar shows truncated item title with episode label for TV shows (S01E02 format)
+  - Three control buttons: mute/unmute (Volume2/VolumeX), expand back (Maximize2), close (X)
+  - Mute toggle uses CSS filter brightness as visual indicator (cross-origin iframe limitation)
+  - AnimatePresence: smooth enter (scale 0.8→1) and exit (scale 1→0.8 + opacity) animations
+  - Styled with rounded-xl, shadow-2xl, border-streamex-border, z-[60] (above DMCA button)
+  - iframe with allow="autoplay; fullscreen" and allowFullScreen for continuous playback
+  - Calculates embed URL using getEmbedUrl with the correct server, season, and episode
+- Modified /src/components/streamex/video-player.tsx:
+  - Added Minimize2 icon import from lucide-react
+  - Extended VideoPlayerProps with `onMiniPlayer?: (serverIndex: number, season: number, episode: number) => void`
+  - Added "Mini Player" button in top bar between Back button and title (conditionally rendered)
+  - Button calls onMiniPlayer with current activeServerIndex, season, and episode values
+- Modified /src/components/streamex/movie-detail.tsx:
+  - Extended MovieDetailProps with `onMiniPlayer?: (item: CardItem, serverIndex: number, season: number, episode: number) => void`
+  - Wraps onMiniPlayer to include the CardItem context when passing to VideoPlayer
+- Modified /src/app/page.tsx:
+  - Imported MiniPlayer component
+  - Added miniPlayerItem state: { item, serverIndex, season, episode } | null
+  - handleMiniPlayer: saves player state, navigates back to home view
+  - handleMiniPlayerExpand: restores selectedItem, sets detail view, clears mini player
+  - handleMiniPlayerClose: clears mini player state
+  - Passes onMiniPlayer prop to MovieDetail
+  - Renders MiniPlayer as fixed overlay outside <main> scrollable area with AnimatePresence
+- All lint checks pass with zero errors
+
+Stage Summary:
+- New file: src/components/streamex/mini-player.tsx
+- Modified files: src/components/streamex/video-player.tsx, src/components/streamex/movie-detail.tsx, src/app/page.tsx
+- Mini Player: draggable floating overlay, 400×225px default, resizable on mobile, full playback continuity
+- Controls: mute/unmute, expand to full player, close
+- State flows through page.tsx → MovieDetail → VideoPlayer → MiniPlayer
+- z-index: z-[60] ensures mini player appears above all other overlays including DMCA button

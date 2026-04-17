@@ -32,9 +32,10 @@ interface MovieDetailProps {
   item: CardItem;
   similarItems: CardItem[];
   onBack: () => void;
+  onMiniPlayer?: (item: CardItem, serverIndex: number, season: number, episode: number) => void;
 }
 
-export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
+export function MovieDetail({ item, similarItems, onBack, onMiniPlayer }: MovieDetailProps) {
   const [showPlayer, setShowPlayer] = useState(false);
   const [initialServerIndex, setInitialServerIndex] = useState(0);
 
@@ -84,6 +85,11 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
       <VideoPlayer
         item={item}
         onClose={() => setShowPlayer(false)}
+        onMiniPlayer={
+          onMiniPlayer
+            ? (serverIndex, season, episode) => onMiniPlayer(item, serverIndex, season, episode)
+            : undefined
+        }
         initialServerIndex={initialServerIndex}
       />
     );

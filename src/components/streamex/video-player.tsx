@@ -8,6 +8,7 @@ import {
   Tv,
   ChevronLeft,
   Loader2,
+  Minimize2,
   MonitorUp,
   RefreshCw,
   Subtitles,
@@ -30,13 +31,14 @@ function isLiveItem(item: CardItem): item is LiveMediaItem {
 interface VideoPlayerProps {
   item: CardItem;
   onClose: () => void;
+  onMiniPlayer?: (serverIndex: number, season: number, episode: number) => void;
   initialServerIndex?: number;
 }
 
 // Smart fallback: auto-try next server if current one doesn't load within timeout
 const LOAD_TIMEOUT_MS = 10000; // 10 seconds
 
-export function VideoPlayer({ item, onClose, initialServerIndex = 0 }: VideoPlayerProps) {
+export function VideoPlayer({ item, onClose, onMiniPlayer, initialServerIndex = 0 }: VideoPlayerProps) {
   const [activeServerIndex, setActiveServerIndex] = useState(initialServerIndex);
   const [season, setSeason] = useState(1);
   const [episode, setEpisode] = useState(1);
@@ -190,6 +192,16 @@ export function VideoPlayer({ item, onClose, initialServerIndex = 0 }: VideoPlay
           <ChevronLeft size={18} />
           <span className="hidden sm:inline">Back</span>
         </button>
+        {onMiniPlayer && (
+          <button
+            onClick={() => onMiniPlayer(activeServerIndex, season, episode)}
+            className="flex items-center gap-1.5 text-sm text-streamex-text-secondary hover:text-white transition-colors cursor-pointer"
+            title="Mini Player"
+          >
+            <Minimize2 size={16} />
+            <span className="hidden sm:inline">Mini Player</span>
+          </button>
+        )}
         <h3 className="text-sm font-medium text-white truncate px-4">
           {item.title}
         </h3>

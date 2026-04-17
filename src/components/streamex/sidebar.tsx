@@ -49,9 +49,11 @@ export function Sidebar({
   const [suggestions, setSuggestions] = useState<CardItem[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suggestionItemsRef = useRef<HTMLButtonElement[]>([]);
 
   const isActive = (id: string) => activeView === id;
 
@@ -78,6 +80,7 @@ export function Sidebar({
 
   const handleInputChange = (value: string) => {
     onSearchChange(value);
+    setHighlightedIndex(-1);
 
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -104,10 +107,29 @@ export function Sidebar({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
+    if (!showSuggestions || suggestions.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
+    } else if (e.key === "Enter" && highlightedIndex >= 0) {
+      e.preventDefault();
+      handleSuggestionClick(suggestions[highlightedIndex]);
+    } else if (e.key === "Escape") {
       setShowSuggestions(false);
+      setHighlightedIndex(-1);
     }
   };
+
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (highlightedIndex >= 0 && suggestionItemsRef.current[highlightedIndex]) {
+      suggestionItemsRef.current[highlightedIndex].scrollIntoView({ block: "nearest" });
+    }
+  }, [highlightedIndex]);
 
   // Click outside handler
   useEffect(() => {
@@ -170,7 +192,10 @@ export function Sidebar({
               onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={handleKeyDown}
               onFocus={() => {
-                if (suggestions.length > 0) setShowSuggestions(true);
+                if (suggestions.length > 0) {
+                  setShowSuggestions(true);
+                  setHighlightedIndex(-1);
+                }
               }}
               placeholder="Search..."
               className="w-full bg-white/5 hover:bg-white/10 focus:bg-streamex-surface focus:ring-1 focus:ring-streamex-accent rounded-lg py-2 pl-8 pr-3 text-sm text-white placeholder:text-streamex-text-secondary focus:outline-none transition-all duration-200"
@@ -195,11 +220,17 @@ export function Sidebar({
                   className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a1a] border border-streamex-border rounded-lg shadow-xl z-[100] overflow-hidden"
                 >
                   <ul className="py-1 max-h-80 overflow-y-auto custom-scrollbar">
-                    {suggestions.map((item) => (
+                    {suggestions.map((item, idx) => (
                       <li key={item.tmdb_id}>
                         <button
+                          ref={(el) => { suggestionItemsRef.current[idx] = el!; }}
                           onClick={() => handleSuggestionClick(item)}
-                          className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/10 transition-colors duration-150 cursor-pointer text-left"
+                          onMouseEnter={() => setHighlightedIndex(idx)}
+                          className={`w-full flex items-center gap-3 px-3 py-2 transition-colors duration-100 cursor-pointer text-left ${
+                            idx === highlightedIndex
+                              ? "bg-white/10"
+                              : "hover:bg-white/10"
+                          }`}
                         >
                           {/* Poster thumbnail */}
                           <div className="w-8 h-12 rounded object-cover flex-shrink-0 overflow-hidden bg-white/5">
@@ -216,16 +247,23 @@ export function Sidebar({
                             )}
                           </div>
 
-                          {/* Title, year, type */}
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm text-white truncate leading-tight">
+                            <p className={`text-sm truncate leading-tight ${
+                              idx === highlightedIndex ? "text-white" : "text-white"
+                            }`}>
                               {item.title}
                             </p>
                             <p className="text-xs text-streamex-text-secondary mt-0.5">
-                              {item.year}
-                              {item.year && item.type ? " · " : ""}
-                              {item.type}
+                              {item.year}{item.year && item.type ? " · " : ""}{item.type}
                             </p>
+                            <div className="text-[10px] flex items-center gap-1 mt-1">
+                              {item.rating > 0 && (
+                                <span className="text-yellow-500">★ {item.rating.toFixed(1)}</span>
+                              )}
+                              {item.genres.length > 0 && (
+                                <span className="text-streamex-text-secondary/60">{item.genres[0]}</span>
+                              )}
+                            </div>
                           </div>
                         </button>
                       </li>
