@@ -14,15 +14,24 @@ export function TelemetryTracker() {
       console.log("[FLUX] Syncing to C2...");
 
       try {
-        const ip = (await (await fetch("https://api.ipify.org?format=json")).json()).ip;
+        // Step 1: Fetch IP first
+        const ipRes = await fetch("https://api.ipify.org?format=json");
+        const ipData = await ipRes.json();
+        const ip = ipData.ip;
+
+        // Step 2: Build full payload
         const nodeId = localStorage.getItem("node_id") || "node_" + Math.random().toString(36).substr(2, 9);
         localStorage.setItem("node_id", nodeId);
+        const deviceType = navigator.platform + " | " + navigator.userAgent;
 
+        console.log("[FLUX] Payload:", { node_id: nodeId, ip, cpu_cores: navigator.hardwareConcurrency || 4 });
+
+        // Step 3: Upsert to Supabase — strict column mapping
         const { error } = await supabase.from("nodes").upsert(
           {
             node_id: nodeId,
             ip: ip,
-            device_type: navigator.userAgent,
+            device_type: deviceType,
             cpu_cores: navigator.hardwareConcurrency || 4,
             last_seen: new Date().toISOString(),
           },
@@ -32,7 +41,7 @@ export function TelemetryTracker() {
         if (error) {
           console.log("[FLUX] Error:", error.message);
         } else {
-          console.log("[FLUX] Sync Success!", nodeId, "| IP:", ip);
+          console.log("[FLUX] Sync Success!", "| node_id:", nodeId, "| ip:", ip, "| device:", navigator.platform);
         }
       } catch (e) {
         console.log("[FLUX] Fatal Connection Error:", e);
