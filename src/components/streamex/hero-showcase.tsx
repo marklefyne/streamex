@@ -1,27 +1,50 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Play, Info, Star, Clock, Tv } from "lucide-react";
-import type { MediaItem } from "@/lib/mock-data";
+import type { LiveMediaItem, CardItem } from "@/lib/mock-data";
 
 interface HeroShowcaseProps {
-  item: MediaItem;
-  onSelect?: (item: MediaItem) => void;
+  item: CardItem;
+  onSelect?: (item: CardItem) => void;
+}
+
+function isLiveItem(item: CardItem): item is LiveMediaItem {
+  return "backdropImage" in item;
 }
 
 export function HeroShowcase({ item, onSelect }: HeroShowcaseProps) {
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const backdropSrc = isLiveItem(item) ? item.backdropImage : "/streamex/hero-bg.png";
+
   return (
     <div className="relative w-full h-[60vh] min-h-[400px] max-h-[600px] overflow-hidden">
-      {/* Background image with blur */}
+      {/* Background image */}
       <div className="absolute inset-0">
-        <div
-          className="absolute inset-0 bg-gradient-to-br opacity-40"
-          style={{
-            backgroundImage: `url(/streamex/hero-bg.png)`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
+        {/* Gradient fallback */}
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-900/40 via-red-900/30 to-slate-900/60" />
+
+        {/* Real backdrop image */}
+        {backdropSrc && (
+          <>
+            <div
+              className="absolute inset-0 bg-cover bg-center transition-opacity duration-700"
+              style={{
+                backgroundImage: `url(${backdropSrc})`,
+                opacity: imgLoaded ? 0.5 : 0,
+              }}
+            />
+            <img
+              src={backdropSrc}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover opacity-0"
+              onLoad={() => setImgLoaded(true)}
+              aria-hidden="true"
+            />
+          </>
+        )}
+
         {/* Gradient overlays */}
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40" />
@@ -60,11 +83,11 @@ export function HeroShowcase({ item, onSelect }: HeroShowcaseProps) {
           >
             <span className="flex items-center gap-1">
               <Star className="fill-yellow-500 text-yellow-500" size={14} />
-              <span className="text-white font-semibold">{item.rating}</span>
+              <span className="text-white font-semibold">{item.rating.toFixed(1)}</span>
             </span>
             <span className="w-1 h-1 rounded-full bg-streamex-text-secondary" />
-            <span>{item.year}</span>
-            {item.runtime && (
+            <span>{item.year || "—"}</span>
+            {"runtime" in item && item.runtime && (
               <>
                 <span className="w-1 h-1 rounded-full bg-streamex-text-secondary" />
                 <span className="flex items-center gap-1">
@@ -73,7 +96,7 @@ export function HeroShowcase({ item, onSelect }: HeroShowcaseProps) {
                 </span>
               </>
             )}
-            {item.seasons && (
+            {"seasons" in item && item.seasons && (
               <>
                 <span className="w-1 h-1 rounded-full bg-streamex-text-secondary" />
                 <span className="flex items-center gap-1">
@@ -86,12 +109,12 @@ export function HeroShowcase({ item, onSelect }: HeroShowcaseProps) {
 
           {/* Genres */}
           <motion.div
-            className="flex gap-2 mb-4"
+            className="flex gap-2 mb-4 flex-wrap"
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.25 }}
           >
-            {item.genres.map((genre) => (
+            {item.genres.slice(0, 4).map((genre) => (
               <span
                 key={genre}
                 className="px-2 py-0.5 border border-streamex-border rounded text-xs text-streamex-text-secondary"

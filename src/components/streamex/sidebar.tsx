@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Home,
@@ -16,6 +15,7 @@ import {
   X,
   Search,
   ChevronRight,
+  Eye,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -42,6 +42,7 @@ const libraryNav = [
 ];
 
 const sidebarFooter = [
+  { id: "vision-control", label: "Vision Control", icon: Eye },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
@@ -74,9 +75,13 @@ export function Sidebar({
             key={id}
             onClick={() => handleNavClick(id)}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 cursor-pointer ${
-              isActive(id)
-                ? "bg-streamex-accent text-white"
-                : "text-streamex-text-secondary hover:text-white hover:bg-white/5"
+              id === "vision-control"
+                ? isActive(id)
+                  ? "bg-emerald-600/20 text-emerald-400 border border-emerald-500/30"
+                  : "text-emerald-500/70 hover:text-emerald-400 hover:bg-emerald-500/10"
+                : isActive(id)
+                  ? "bg-streamex-accent text-white"
+                  : "text-streamex-text-secondary hover:text-white hover:bg-white/5"
             } ${isCollapsed ? "justify-center" : ""}`}
             title={isCollapsed ? label : undefined}
           >

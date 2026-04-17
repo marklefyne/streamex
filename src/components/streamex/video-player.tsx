@@ -4,19 +4,22 @@ import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play,
+  Star,
   Clock,
   Tv,
-  Star,
   ChevronLeft,
   Loader2,
   MonitorUp,
-  AlertTriangle,
 } from "lucide-react";
-import type { MediaItem } from "@/lib/mock-data";
+import type { CardItem, LiveMediaItem, MediaItem } from "@/lib/mock-data";
 import { getEmbedUrl, SERVERS } from "@/lib/mock-data";
 
+function isLegacyItem(item: CardItem): item is MediaItem {
+  return "posterGradient" in item;
+}
+
 interface VideoPlayerProps {
-  item: MediaItem;
+  item: CardItem;
   onClose: () => void;
 }
 
@@ -26,10 +29,12 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
   const [episode, setEpisode] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [iframeKey, setIframeKey] = useState(0);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  const mediaType = item.type === "TV Series" || item.type === "Anime" ? "tv" : "movie";
-  const embedUrl = getEmbedUrl(item.tmdb_id, mediaType, activeServer, season, episode);
+  const tmdbId = item.tmdb_id;
+  const isTV = item.type === "TV Series" || item.type === "tv" || item.type === "Anime";
+  const mediaType = isTV ? "tv" : "movie";
+  const embedUrl = getEmbedUrl(tmdbId, mediaType, activeServer, season, episode);
+  const seasonsCount = isLegacyItem(item) ? (item.seasons || 1) : 1;
 
   const handleServerChange = useCallback((serverId: string) => {
     setActiveServer(serverId);
@@ -46,7 +51,7 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
-      {/* ── Top bar ── */}
+      {/* Top bar */}
       <div className="flex items-center justify-between px-4 sm:px-6 py-3 bg-black/90 backdrop-blur-md border-b border-streamex-border z-10 flex-shrink-0">
         <button
           onClick={onClose}
@@ -66,9 +71,8 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
         </div>
       </div>
 
-      {/* ── Player area ── */}
+      {/* Player area */}
       <div className="relative flex-1 bg-black min-h-0">
-        {/* Loading overlay */}
         <AnimatePresence>
           {isLoading && (
             <motion.div
@@ -86,10 +90,8 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
           )}
         </AnimatePresence>
 
-        {/* Iframe */}
         <iframe
           key={iframeKey}
-          ref={iframeRef}
           src={embedUrl}
           className="absolute inset-0 w-full h-full"
           allowFullScreen
@@ -100,7 +102,7 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
         />
       </div>
 
-      {/* ── Bottom panel ── */}
+      {/* Bottom panel */}
       <div className="bg-[#0a0a0a] border-t border-streamex-border flex-shrink-0">
         {/* Server switcher */}
         <div className="px-4 sm:px-6 pt-4 pb-2">
@@ -139,7 +141,7 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
         </div>
 
         {/* Episode selector (TV Series only) */}
-        {mediaType === "tv" && (
+        {isTV && (
           <div className="px-4 sm:px-6 py-3 border-t border-streamex-border">
             <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-2">
@@ -151,7 +153,7 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
                   onChange={(e) => handleEpisodeChange(Number(e.target.value), 1)}
                   className="bg-white/5 border border-streamex-border rounded-md px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-streamex-accent cursor-pointer"
                 >
-                  {Array.from({ length: item.seasons || 1 }, (_, i) => (
+                  {Array.from({ length: Math.max(seasonsCount, 5) }, (_, i) => (
                     <option key={i + 1} value={i + 1}>
                       Season {i + 1}
                     </option>
@@ -184,16 +186,16 @@ export function VideoPlayer({ item, onClose }: VideoPlayerProps) {
             <h2 className="text-base font-bold text-white">{item.title}</h2>
             <span className="flex items-center gap-1 text-sm">
               <Star className="fill-yellow-500 text-yellow-500" size={13} />
-              <span className="text-white font-semibold">{item.rating}</span>
+              <span className="text-white font-semibold">{item.rating.toFixed(1)}</span>
             </span>
-            <span className="text-sm text-streamex-text-secondary">{item.year}</span>
-            {item.runtime && (
+            <span className="text-sm text-streamex-text-secondary">{item.year || "—"}</span>
+            {isLegacyItem(item) && item.runtime && (
               <span className="flex items-center gap-1 text-sm text-streamex-text-secondary">
                 <Clock size={12} />
                 {item.runtime}
               </span>
             )}
-            {item.seasons && (
+            {isLegacyItem(item) && item.seasons && (
               <span className="flex items-center gap-1 text-sm text-streamex-text-secondary">
                 <Tv size={12} />
                 {item.seasons} Season{item.seasons > 1 ? "s" : ""}

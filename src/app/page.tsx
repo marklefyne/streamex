@@ -2,25 +2,17 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Search, Star, Film } from "lucide-react";
+import { Search, Star, Film, Eye } from "lucide-react";
 
 import { Sidebar } from "@/components/streamex/sidebar";
 import { HeroShowcase } from "@/components/streamex/hero-showcase";
 import { MediaRow } from "@/components/streamex/media-row";
-import { MediaCard } from "@/components/streamex/media-card";
-import { SkeletonRow } from "@/components/streamex/skeleton-card";
-import { SkeletonGrid } from "@/components/streamex/skeleton-card";
+import { MediaCard, type CardItem } from "@/components/streamex/media-card";
+import { SkeletonRow, SkeletonGrid } from "@/components/streamex/skeleton-card";
 import { MovieDetail } from "@/components/streamex/movie-detail";
+import { VisionControl } from "@/components/streamex/vision-control";
 
-import {
-  heroMedia,
-  trendingNow,
-  topRated,
-  newReleases,
-  allMedia,
-  searchMedia,
-  type MediaItem,
-} from "@/lib/mock-data";
+import { SERVERS } from "@/lib/mock-data";
 
 type ViewType =
   | "home"
@@ -31,15 +23,23 @@ type ViewType =
   | "new"
   | "mylist"
   | "settings"
-  | "detail";
+  | "detail"
+  | "vision-control";
 
 export default function Home() {
   const [activeView, setActiveView] = useState<ViewType>("home");
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<MediaItem[]>([]);
+  const [searchResults, setSearchResults] = useState<CardItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<CardItem | null>(null);
+
+  // Live TMDB data
+  const [trendingItems, setTrendingItems] = useState<CardItem[]>([]);
+  const [topRatedItems, setTopRatedItems] = useState<CardItem[]>([]);
+  const [newReleaseItems, setNewReleaseItems] = useState<CardItem[]>([]);
+  const [tvShowItems, setTVShowItems] = useState<CardItem[]>([]);
+  const [heroItem, setHeroItem] = useState<CardItem | null>(null);
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchQueryRef = useRef("");
@@ -47,22 +47,42 @@ export default function Home() {
   // Determine if we're in search mode
   const isInSearchMode = searchQuery.trim().length > 0 || isSearching;
 
-  // Initial loading simulation (for the homepage skeleton)
+  // Fetch all data on mount
   useEffect(() => {
-    const timer = setTimeout(() => setIsInitialLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
+    const fetchAllData = async () => {
+      try {
+        const [trendingRes, topRatedRes, nowPlayingRes, tvRes] = await Promise.all([
+          fetch("/api/tmdb/trending"),
+          fetch("/api/tmdb/top-rated"),
+          fetch("/api/tmdb/now-playing"),
+          fetch("/api/tmdb/popular-tv"),
+        ]);
 
-  // Cleanup search timer on unmount
-  useEffect(() => {
-    return () => {
-      if (searchTimerRef.current) {
-        clearTimeout(searchTimerRef.current);
+        const trendingData = trendingRes.ok ? await trendingRes.json() : { items: [] };
+        const topRatedData = topRatedRes.ok ? await topRatedRes.json() : { items: [] };
+        const nowPlayingData = nowPlayingRes.ok ? await nowPlayingRes.json() : { items: [] };
+        const tvData = tvRes.ok ? await tvRes.json() : { items: [] };
+
+        setTrendingItems(trendingData.items || []);
+        setTopRatedItems(topRatedData.items || []);
+        setNewReleaseItems(nowPlayingData.items || []);
+        setTVShowItems(tvData.items || []);
+
+        // Set hero item to first trending item
+        if (trendingData.items?.length > 0) {
+          setHeroItem(trendingData.items[0]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch TMDB data:", err);
+      } finally {
+        setIsInitialLoading(false);
       }
     };
+
+    fetchAllData();
   }, []);
 
-  // Search handler - event-driven
+  // Search handler - event-driven with TMDB API
   const handleSearchChange = useCallback((value: string) => {
     searchQueryRef.current = value;
     setSearchQuery(value);
@@ -74,12 +94,21 @@ export default function Home() {
 
     if (value.trim().length > 0) {
       setIsSearching(true);
-      searchTimerRef.current = setTimeout(() => {
-        const results = searchMedia(searchQueryRef.current);
-        setSearchResults(results);
-        setIsSearching(false);
-        searchTimerRef.current = null;
-      }, 1000);
+      searchTimerRef.current = setTimeout(async () => {
+        try {
+          const res = await fetch(`/api/tmdb/search?query=${encodeURIComponent(searchQueryRef.current.trim())}`);
+          if (res.ok) {
+            const data = await res.json();
+            setSearchResults(data.items || []);
+          }
+        } catch (err) {
+          console.error("Search failed:", err);
+          setSearchResults([]);
+        } finally {
+          setIsSearching(false);
+          searchTimerRef.current = null;
+        }
+      }, 600); // debounce 600ms
     } else {
       setSearchResults([]);
       setIsSearching(false);
@@ -98,7 +127,7 @@ export default function Home() {
     setActiveView(view as ViewType);
   }, []);
 
-  const handleSelectItem = useCallback((item: MediaItem) => {
+  const handleSelectItem = useCallback((item: CardItem) => {
     setSelectedItem(item);
     setActiveView("detail");
   }, []);
@@ -111,7 +140,8 @@ export default function Home() {
   // Get similar items for the detail page
   const similarItems = useMemo(() => {
     if (!selectedItem) return [];
-    return allMedia
+    const allItems = [...trendingItems, ...topRatedItems, ...newReleaseItems, ...tvShowItems];
+    return allItems
       .filter(
         (m) =>
           m.id !== selectedItem.id &&
@@ -119,49 +149,34 @@ export default function Home() {
             m.type === selectedItem.type)
       )
       .slice(0, 12);
-  }, [selectedItem]);
+  }, [selectedItem, trendingItems, topRatedItems, newReleaseItems, tvShowItems]);
 
   // Compute category-specific media
   const getFilteredMedia = useCallback(
-    (view: ViewType): { title: string; items: MediaItem[] }[] => {
+    (view: ViewType): { title: string; items: CardItem[] }[] => {
       switch (view) {
         case "movies":
           return [
-            { title: "All Movies", items: allMedia.filter((m) => m.type === "Movie") },
-            {
-              title: "Action & Thriller",
-              items: allMedia.filter(
-                (m) => m.type === "Movie" && (m.genres.includes("Action") || m.genres.includes("Thriller"))
-              ),
-            },
-            {
-              title: "Drama & Mystery",
-              items: allMedia.filter(
-                (m) => m.type === "Movie" && (m.genres.includes("Drama") || m.genres.includes("Mystery"))
-              ),
-            },
+            { title: "Trending Movies", items: trendingItems.filter((m) => m.type === "Movie") },
+            { title: "Top Rated Movies", items: topRatedItems },
+            { title: "New Releases", items: newReleaseItems },
           ];
         case "tvshows":
           return [
-            { title: "All TV Shows", items: allMedia.filter((m) => m.type === "TV Series") },
-            {
-              title: "Sci-Fi & Fantasy",
-              items: allMedia.filter(
-                (m) => m.type === "TV Series" && (m.genres.includes("Sci-Fi") || m.genres.includes("Fantasy"))
-              ),
-            },
+            { title: "Popular TV Shows", items: tvShowItems },
+            { title: "Trending TV", items: trendingItems.filter((m) => m.type === "TV Series") },
           ];
         case "trending":
-          return [{ title: "Trending Now", items: trendingNow }];
+          return [{ title: "Trending Now", items: trendingItems }];
         case "toprated":
-          return [{ title: "Top Rated", items: topRated }];
+          return [{ title: "Top Rated", items: topRatedItems }];
         case "new":
-          return [{ title: "New Releases", items: newReleases }];
+          return [{ title: "New Releases", items: newReleaseItems }];
         default:
           return [];
       }
     },
-    []
+    [trendingItems, topRatedItems, newReleaseItems, tvShowItems]
   );
 
   const categoryContent = getFilteredMedia(activeView);
@@ -179,6 +194,19 @@ export default function Home() {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto custom-scrollbar">
         <AnimatePresence mode="wait">
+          {/* ============ VISION CONTROL VIEW ============ */}
+          {activeView === "vision-control" && (
+            <motion.div
+              key="vision-control"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <VisionControl onBack={() => handleViewChange("home")} />
+            </motion.div>
+          )}
+
           {/* ============ DETAIL VIEW ============ */}
           {activeView === "detail" && selectedItem && (
             <motion.div
@@ -214,17 +242,28 @@ export default function Home() {
                 </div>
               ) : (
                 <>
-                  <HeroShowcase item={heroMedia} onSelect={handleSelectItem} />
+                  {heroItem && (
+                    <HeroShowcase item={heroItem} onSelect={handleSelectItem} />
+                  )}
 
                   <div className="space-y-2 py-6">
-                    <MediaRow title="Trending Now" items={trendingNow} startIndex={0} onSelect={handleSelectItem} />
-                    <MediaRow title="Top Rated" items={topRated} startIndex={10} onSelect={handleSelectItem} />
-                    <MediaRow title="New Releases" items={newReleases} startIndex={20} onSelect={handleSelectItem} />
+                    {trendingItems.length > 0 && (
+                      <MediaRow title="Trending Now" items={trendingItems} onSelect={handleSelectItem} />
+                    )}
+                    {topRatedItems.length > 0 && (
+                      <MediaRow title="Top Rated" items={topRatedItems} onSelect={handleSelectItem} />
+                    )}
+                    {newReleaseItems.length > 0 && (
+                      <MediaRow title="New Releases" items={newReleaseItems} onSelect={handleSelectItem} />
+                    )}
+                    {tvShowItems.length > 0 && (
+                      <MediaRow title="Popular TV Shows" items={tvShowItems} onSelect={handleSelectItem} />
+                    )}
                   </div>
 
                   <footer className="border-t border-streamex-border px-8 py-6 mt-4">
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-streamex-text-secondary">
-                      <p>&copy; 2025 StreameX. All rights reserved. Built with Next.js.</p>
+                      <p>&copy; 2025 StreameX. All rights reserved. Powered by TMDB.</p>
                       <div className="flex gap-4">
                         <span className="hover:text-white transition-colors cursor-pointer">Terms</span>
                         <span className="hover:text-white transition-colors cursor-pointer">Privacy</span>
@@ -254,7 +293,7 @@ export default function Home() {
                 </div>
                 <p className="text-sm text-streamex-text-secondary">
                   {isSearching
-                    ? "Searching..."
+                    ? "Searching TMDB..."
                     : searchResults.length > 0
                       ? `Found ${searchResults.length} result${searchResults.length !== 1 ? "s" : ""} for "${searchQuery}"`
                       : searchQuery.trim()
@@ -305,7 +344,7 @@ export default function Home() {
           )}
 
           {/* ============ CATEGORY VIEWS ============ */}
-          {!isInSearchMode && activeView !== "home" && activeView !== "detail" && (
+          {!isInSearchMode && activeView !== "home" && activeView !== "detail" && activeView !== "vision-control" && (
             <motion.div
               key={activeView}
               initial={{ opacity: 0 }}
@@ -376,6 +415,11 @@ export default function Home() {
                     onSelect={handleSelectItem}
                   />
                 ))
+              ) : isInitialLoading ? (
+                <div className="space-y-8">
+                  <SkeletonRow title count={8} />
+                  <SkeletonRow title count={8} />
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-20 px-8">
                   <div className="w-16 h-16 rounded-full bg-streamex-surface flex items-center justify-center mb-4">

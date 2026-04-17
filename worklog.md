@@ -1,48 +1,51 @@
 ---
 Task ID: 1
 Agent: Main Agent
-Task: Build StreameX streaming discovery site frontend
+Task: Full TMDB integration, analytics engine, admin dashboard, and functional search
 
 Work Log:
-- Explored existing project structure and dependencies
-- Generated hero background image (1344x768) and hero poster image (768x1344) using z-ai image generation CLI
-- Updated globals.css with StreameX dark theme colors (#000000 bg, #121212 surface, #E50914 accent, #A0A0A0 secondary text)
-- Updated layout.tsx with Inter font and dark mode HTML class
-- Created mock data with 30+ media items across trending, top rated, and new releases categories
-- Built 8 components: Sidebar, HeroShowcase, MediaCard, MediaRow, PosterImage, RatingBadge, SearchInput, VideoPlayer, SkeletonCard
-- Implemented useDebounce hook for search functionality
-- Assembled main page.tsx with home view (hero + media rows), search view (with skeleton loading), category views, and video player overlay
-- Added smooth transitions with framer-motion, skeleton shimmer animations, staggered card animations
-- Implemented responsive design: mobile sidebar with overlay, responsive media grids (grid-cols-2 to grid-cols-6)
-- Added custom scrollbar styling and no-scrollbar utility
+- Reviewed existing StreameX project structure (Next.js 16, Tailwind CSS, shadcn/ui)
+- Created .env.local with TMDB API key
+- Updated next.config.ts to allow image.tmdb.org remote patterns
+- Updated Prisma schema with TelemetrySession model (ip, userAgent, country, city, region, device, os, browser, path)
+- Ran db:push to apply schema changes
+- Created src/lib/tmdb.ts - comprehensive TMDB API utility with functions for trending, top-rated, now-playing, search, genres, and toMediaItem converter
+- Created 7 API routes:
+  - /api/tmdb/trending - trending movies/shows
+  - /api/tmdb/top-rated - top rated movies
+  - /api/tmdb/now-playing - new releases (now playing + upcoming)
+  - /api/tmdb/popular-tv - popular TV shows
+  - /api/tmdb/search - multi search endpoint
+  - /api/tmdb/genres - genre list
+  - /api/v1/telemetry - POST (log session), GET (admin stats), DELETE (clear)
+- Updated src/lib/mock-data.ts to export unified CardItem type + embed URL utilities + server list
+- Updated PosterImage component to support remote TMDB image URLs with regular <img> tags
+- Updated MediaCard to support both legacy MediaItem and new LiveMediaItem types
+- Updated MediaRow to use unified CardItem type
+- Updated HeroShowcase to support live TMDB items with real backdrop images
+- Updated VideoPlayer to support unified CardItem type
+- Updated MovieDetail to support unified CardItem type with TMDB backdrop/poster images
+- Updated Sidebar to include Vision Control nav item with green accent styling
+- Created src/components/streamex/vision-control.tsx - full admin dashboard with:
+  - Live visitor count stats (total visits, unique visitors, active now, countries, devices)
+  - Auto-refresh (5s interval) with LIVE/PAUSED toggle
+  - Device and browser distribution bar charts
+  - Sortable sessions table (by time, country, device, browser)
+  - Clear data button
+  - Dark theme with neon green accents
+- Created src/components/streamex/telemetry-tracker.tsx - silent useEffect that logs visits
+- Updated root layout.tsx to include TelemetryTracker
+- Rewrote src/app/page.tsx to use live TMDB data with:
+  - Parallel fetching of trending, top-rated, new releases, and TV shows
+  - Debounced TMDB search (600ms)
+  - Skeleton loading states
+  - Vision Control view integration
+- All lint checks pass with 0 errors and 0 warnings
 
 Stage Summary:
-- Complete StreameX frontend built with all spec requirements
-- Color palette: Pure black (#000000), Surface (#121212), Accent (#E50914), Secondary text (#A0A0A0)
-- Components: Fixed sidebar with collapse, Hero showcase, Media rows with horizontal scroll, Media cards with rating badges and hover effects, Search with debounce and skeleton loading, Video player with server selection
-- All animations and transitions implemented using framer-motion
-- Dev server running successfully on port 3000, page loads with HTTP 200
-- ESLint passes with 0 errors and 0 warnings
----
-Task ID: 2
-Agent: Main Agent
-Task: Integrate dynamic video player with embed provider and server switcher
-
-Work Log:
-- Added real TMDB IDs to all 31 mock data items (using real movie/show IDs for working embeds)
-- Added getEmbedUrl() utility function that builds embed URLs for 6 different providers
-- Added SERVERS constant with 6 embed server options (VidSrc, VidSrc CC, AutoEmbed, MoviesAPI, VidSrc XYZ, Embed.su)
-- Rebuilt VideoPlayer component with real iframe embeds, loading state, server switcher, and season/episode selector for TV shows
-- Created MovieDetail component with cinematic backdrop hero, poster, metadata, action buttons, server quick-select grid, and similar titles section
-- Updated MediaCard, MediaRow, HeroShowcase to accept onSelect callback for navigation
-- Updated page.tsx to handle "detail" view state with MovieDetail, routing back to home
-
-Stage Summary:
-- VideoPlayer now loads real streams via iframe from 6 different embed providers
-- Server Switcher UI allows switching between servers with active indicator and loading animation
-- TV Series support with season/episode selector dropdowns
-- Movie Detail page shows poster, metadata, genres, description, Play/Add/Like/Share buttons
-- Server quick-select grid on detail page for fast server switching
-- Similar titles section shows related content based on shared genres
-- All navigation wired: clicking any card opens detail page, Play Now opens embedded video player
-- ESLint passes clean, HTTP 200 confirmed
+- TMDB API fully integrated with real data (trending, top rated, new releases, TV shows, search)
+- All posters now use https://image.tmdb.org/t/p/w500/ paths
+- Telemetry engine silently logs IP, User-Agent (device/OS/browser), and country
+- Admin dashboard accessible via Vision Control sidebar item with live stats
+- Search functional with TMDB multi-search endpoint and skeleton loading
+- Dev server running healthy on port 3000

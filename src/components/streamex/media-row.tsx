@@ -2,14 +2,13 @@
 
 import { useRef, useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { MediaCard } from "./media-card";
-import type { MediaItem } from "@/lib/mock-data";
+import { MediaCard, type CardItem } from "./media-card";
 
 interface MediaRowProps {
   title: string;
-  items: MediaItem[];
+  items: CardItem[];
   startIndex?: number;
-  onSelect?: (item: MediaItem) => void;
+  onSelect?: (item: CardItem) => void;
 }
 
 export function MediaRow({ title, items, startIndex = 0, onSelect }: MediaRowProps) {
@@ -36,7 +35,7 @@ export function MediaRow({ title, items, startIndex = 0, onSelect }: MediaRowPro
       ref?.removeEventListener("scroll", checkScroll);
       window.removeEventListener("resize", checkScroll);
     };
-  }, []);
+  }, [items]);
 
   const scroll = (direction: "left" | "right") => {
     if (!scrollRef.current) return;
@@ -46,6 +45,8 @@ export function MediaRow({ title, items, startIndex = 0, onSelect }: MediaRowPro
       behavior: "smooth",
     });
   };
+
+  if (items.length === 0) return null;
 
   return (
     <div

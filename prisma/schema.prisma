@@ -30,3 +30,17 @@ model Post {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model TelemetrySession {
+  id        String   @id @default(cuid())
+  ip        String
+  userAgent String
+  country   String?
+  city      String?
+  region    String?
+  device    String?
+  os        String?
+  browser   String?
+  path      String?
+  createdAt DateTime @default(now())
+}

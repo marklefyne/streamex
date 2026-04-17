@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Play,
   Star,
@@ -9,18 +9,21 @@ import {
   Tv,
   Calendar,
   ChevronLeft,
-  Bookmark,
+  ListPlus,
   Heart,
   Share2,
-  ListPlus,
 } from "lucide-react";
-import type { MediaItem } from "@/lib/mock-data";
+import type { CardItem, LiveMediaItem, MediaItem } from "@/lib/mock-data";
 import { VideoPlayer } from "./video-player";
 import { MediaCard } from "./media-card";
 
+function isLegacyItem(item: CardItem): item is MediaItem {
+  return "posterGradient" in item;
+}
+
 interface MovieDetailProps {
-  item: MediaItem;
-  similarItems: MediaItem[];
+  item: CardItem;
+  similarItems: CardItem[];
   onBack: () => void;
 }
 
@@ -28,8 +31,6 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
   const [showPlayer, setShowPlayer] = useState(false);
   const [isInList, setIsInList] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
-
-  const mediaType = item.type === "TV Series" || item.type === "Anime" ? "tv" : "movie";
 
   const handlePlay = useCallback(() => {
     setShowPlayer(true);
@@ -39,21 +40,23 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
     return <VideoPlayer item={item} onClose={() => setShowPlayer(false)} />;
   }
 
+  const isTV = item.type === "TV Series" || item.type === "tv" || item.type === "Anime";
+  const backdropSrc = isLegacyItem(item) ? "/streamex/hero-bg.png" : (item as LiveMediaItem).backdropImage;
+  const runtime = isLegacyItem(item) ? item.runtime : undefined;
+  const seasonsCount = isLegacyItem(item) ? item.seasons : undefined;
+
   return (
     <div className="min-h-full">
-      {/* ── Backdrop Hero ── */}
+      {/* Backdrop Hero */}
       <div className="relative w-full h-[55vh] min-h-[380px] max-h-[520px] overflow-hidden">
-        {/* Background gradient */}
-        <div
-          className="absolute inset-0 opacity-30"
-          style={{
-            backgroundImage: `url(/streamex/hero-bg.png)`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-br opacity-50" />
-        {/* Vertical gradient overlays */}
+        {/* Background */}
+        {backdropSrc && (
+          <div
+            className="absolute inset-0 bg-cover bg-center opacity-30"
+            style={{ backgroundImage: `url(${backdropSrc})` }}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-br opacity-50 from-red-950/40 via-black to-black/60" />
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/30" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black to-transparent" />
@@ -81,58 +84,49 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
             {/* Poster */}
             <div className="hidden sm:block flex-shrink-0 w-40 md:w-48">
               <div className="aspect-[2/3] rounded-lg overflow-hidden shadow-2xl shadow-black/60">
-                <div
-                  className={`w-full h-full bg-gradient-to-br ${item.posterGradient} flex items-center justify-center p-3`}
-                >
-                  {item.posterImage ? (
-                    <img
-                      src={item.posterImage}
-                      alt={item.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-white/70 text-xs font-medium text-center leading-tight">
-                      {item.title}
-                    </span>
-                  )}
-                </div>
+                <img
+                  src={item.posterImage || ""}
+                  alt={item.title}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
               </div>
             </div>
 
             {/* Info */}
             <div className="flex-1 pb-2">
-              {/* Title */}
               <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white mb-3 leading-tight tracking-tight">
                 {item.title}
               </h1>
 
-              {/* Meta */}
               <div className="flex items-center gap-3 text-sm text-streamex-text-secondary mb-3 flex-wrap">
                 <span className="flex items-center gap-1">
                   <Star className="fill-yellow-500 text-yellow-500" size={15} />
-                  <span className="text-white font-bold text-base">{item.rating}</span>
+                  <span className="text-white font-bold text-base">{item.rating.toFixed(1)}</span>
                   <span className="text-yellow-500/70">/10</span>
                 </span>
                 <span className="w-1 h-1 rounded-full bg-streamex-text-secondary" />
                 <span className="flex items-center gap-1">
                   <Calendar size={13} />
-                  {item.year}
+                  {item.year || "—"}
                 </span>
-                {item.runtime && (
+                {runtime && (
                   <>
                     <span className="w-1 h-1 rounded-full bg-streamex-text-secondary" />
                     <span className="flex items-center gap-1">
                       <Clock size={13} />
-                      {item.runtime}
+                      {runtime}
                     </span>
                   </>
                 )}
-                {item.seasons && (
+                {seasonsCount && (
                   <>
                     <span className="w-1 h-1 rounded-full bg-streamex-text-secondary" />
                     <span className="flex items-center gap-1">
                       <Tv size={13} />
-                      {item.seasons} Season{item.seasons > 1 ? "s" : ""}
+                      {seasonsCount} Season{seasonsCount > 1 ? "s" : ""}
                     </span>
                   </>
                 )}
@@ -142,7 +136,6 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
                 </span>
               </div>
 
-              {/* Genres */}
               <div className="flex gap-2 mb-4 flex-wrap">
                 {item.genres.map((genre) => (
                   <span
@@ -154,12 +147,10 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
                 ))}
               </div>
 
-              {/* Description */}
               <p className="text-sm text-streamex-text-secondary leading-relaxed mb-5 max-w-xl">
                 {item.description}
               </p>
 
-              {/* Action buttons */}
               <div className="flex gap-3 flex-wrap">
                 <button
                   onClick={handlePlay}
@@ -198,7 +189,7 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
         </div>
       </div>
 
-      {/* ── Server Quick-Select ── */}
+      {/* Server Quick-Select */}
       <div className="px-6 sm:px-8 py-6 border-b border-streamex-border">
         <motion.div
           initial={{ opacity: 0, y: 15 }}
@@ -210,15 +201,15 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
             {[
-              { name: "Server 1", sub: "VidSrc", id: "vidsrc" },
-              { name: "Server 2", sub: "VidSrc CC", id: "vidsrc2" },
-              { name: "Server 3", sub: "AutoEmbed", id: "autoembed" },
-              { name: "Server 4", sub: "MoviesAPI", id: "movieapi" },
-              { name: "Server 5", sub: "VidSrc XYZ", id: "vidsrcxyz" },
-              { name: "Server 6", sub: "Embed.su", id: "embedsu" },
-            ].map((server, i) => (
+              { name: "Server 1", sub: "VidSrc" },
+              { name: "Server 2", sub: "VidSrc CC" },
+              { name: "Server 3", sub: "AutoEmbed" },
+              { name: "Server 4", sub: "MoviesAPI" },
+              { name: "Server 5", sub: "VidSrc XYZ" },
+              { name: "Server 6", sub: "Embed.su" },
+            ].map((server) => (
               <button
-                key={server.id}
+                key={server.name}
                 onClick={handlePlay}
                 className="flex flex-col items-center gap-1 px-4 py-3 rounded-lg bg-streamex-surface hover:bg-streamex-surface-hover border border-streamex-border hover:border-streamex-accent/50 text-white transition-all duration-200 cursor-pointer group"
               >
@@ -236,7 +227,7 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
         </motion.div>
       </div>
 
-      {/* ── Similar Titles ── */}
+      {/* Similar Titles */}
       {similarItems.length > 0 && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -253,7 +244,7 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
         </motion.div>
       )}
 
-      {/* ── Footer ── */}
+      {/* Footer */}
       <footer className="border-t border-streamex-border px-8 py-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-streamex-text-secondary">
           <p>&copy; 2025 StreameX. All rights reserved.</p>

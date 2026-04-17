@@ -3,17 +3,32 @@
 import { motion } from "framer-motion";
 import { PosterImage } from "./poster-image";
 import { RatingBadge } from "./rating-badge";
-import type { MediaItem } from "@/lib/mock-data";
+import type { LiveMediaItem, MediaItem } from "@/lib/mock-data";
+
+// Unified card item type
+export type CardItem = LiveMediaItem | MediaItem;
 
 interface MediaCardProps {
-  item: MediaItem;
+  item: CardItem;
   index?: number;
   variant?: "default" | "large";
-  onSelect?: (item: MediaItem) => void;
+  onSelect?: (item: CardItem) => void;
+}
+
+function isLegacyItem(item: CardItem): item is MediaItem {
+  return "posterGradient" in item;
 }
 
 export function MediaCard({ item, index = 0, variant = "default", onSelect }: MediaCardProps) {
   const staggerDelay = index * 0.05;
+
+  const title = item.title;
+  const year = item.year;
+  const type = item.type;
+  const rating = item.rating;
+  const genres = item.genres;
+  const src = item.posterImage;
+  const gradient = isLegacyItem(item) ? item.posterGradient : undefined;
 
   return (
     <motion.div
@@ -29,33 +44,27 @@ export function MediaCard({ item, index = 0, variant = "default", onSelect }: Me
         }`}
       >
         <PosterImage
-          src={item.posterImage}
-          alt={item.title}
-          gradient={item.posterGradient}
-          title={item.title}
+          src={src}
+          alt={title}
+          gradient={gradient}
+          title={title}
           priority={index < 3}
         />
-        <RatingBadge rating={item.rating} />
+        <RatingBadge rating={rating} />
 
         {/* Hover overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <div className="absolute bottom-0 left-0 right-0 p-3 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
             <h3 className="text-sm font-semibold text-white line-clamp-2 mb-1">
-              {item.title}
+              {title}
             </h3>
             <div className="flex items-center gap-2 text-xs text-streamex-text-secondary">
-              <span>{item.year}</span>
+              <span>{year}</span>
               <span className="w-1 h-1 rounded-full bg-streamex-text-secondary" />
-              <span>{item.type}</span>
-              {item.runtime && (
-                <>
-                  <span className="w-1 h-1 rounded-full bg-streamex-text-secondary" />
-                  <span>{item.runtime}</span>
-                </>
-              )}
+              <span>{type}</span>
             </div>
             <div className="flex gap-1.5 mt-2 flex-wrap">
-              {item.genres.slice(0, 2).map((genre) => (
+              {genres.slice(0, 2).map((genre) => (
                 <span
                   key={genre}
                   className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/80"
@@ -71,10 +80,10 @@ export function MediaCard({ item, index = 0, variant = "default", onSelect }: Me
       {/* Title below card */}
       <div className="mt-2 px-0.5">
         <h3 className="text-sm font-medium text-white truncate group-hover:text-streamex-accent transition-colors duration-200">
-          {item.title}
+          {title}
         </h3>
         <p className="text-xs text-streamex-text-secondary mt-0.5">
-          {item.year} · {item.type}
+          {year} · {type}
         </p>
       </div>
     </motion.div>
