@@ -299,3 +299,45 @@ Stage Summary:
 - Controls: mute/unmute, expand to full player, close
 - State flows through page.tsx → MovieDetail → VideoPlayer → MiniPlayer
 - z-index: z-[60] ensures mini player appears above all other overlays including DMCA button
+
+---
+Task ID: 10
+Agent: Main Agent
+Task: Add Picture-in-Picture support and redesign search bar UI
+
+Work Log:
+- Modified /src/components/streamex/video-player.tsx:
+  - Added PictureInPicture2 icon import from lucide-react
+  - Added isPipActive state (boolean) and pipWindowRef (Window ref)
+  - Added isPipSupported check using Document Picture-in-Picture API ('documentPictureInPicture' in window)
+  - Created togglePip callback: opens a Document PiP window (854x480) with dark theme styles, creates new iframe with embed URL, listens for pagehide to reset state
+  - Added cleanup effect to close PiP window on component unmount
+  - Added PiP button in top bar (between Back and Mini Player), only visible when PiP supported AND player state is "playing"
+  - Button shows accent color when active, "PiP On" label; normal secondary color when inactive, "PiP" label
+- Modified /src/components/streamex/sidebar.tsx:
+  - Added imports: ArrowUpRight, Star from lucide-react
+  - Added isFocused state and inputRef for search input focus control
+  - Redesigned search input: glassmorphism container with accent-colored border glow on focus, animated search icon color change, rounded-xl
+  - Added clear button (X) with framer-motion scale animation, replaces search text
+  - Added ⌘K keyboard shortcut hint (visible on large screens when input is empty/unfocused)
+  - Reduced debounce from 300ms to 250ms for snappier suggestions
+  - Added clearSearch and handleViewAllResults helper functions
+  - Completely redesigned suggestions dropdown:
+    - Enhanced animation: scale + translate + custom easing curve
+    - Darker background (#161616), rounded-xl, shadow-2xl with black/50
+    - "Suggestions" section header label
+    - Larger poster thumbnails (w-10 h-60px) with rounded-md and shadow-md
+    - Hover effect: poster scales up via group-hover:scale-105 transition
+    - Arrow-up-right icon on highlighted/keyboard-navigated items
+    - Color-coded type badges: blue for Movie, purple for TV
+    - Star icon (filled yellow) for rating display
+    - Genre tags as rounded-full pills (up to 2 genres)
+    - "View all results" footer button with search icon and arrow
+- Modified /src/app/page.tsx:
+  - Added global ⌘K/Ctrl+K keyboard shortcut handler that focuses the search input
+
+Stage Summary:
+- Picture-in-Picture: Uses Document Picture-in-Picture API (Chrome 116+), opens floating window with dark-themed iframe, auto-cleans on unmount
+- Search UI: Complete redesign with glassmorphism input, animated clear button, keyboard shortcut hint, enhanced suggestion cards with larger posters, type badges, ratings, genre tags, and "View all results" footer
+- Files modified: video-player.tsx, sidebar.tsx, page.tsx
+- All lint checks pass with zero errors

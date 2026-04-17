@@ -15,6 +15,7 @@ import {
   Zap,
   CheckCircle2,
   XCircle,
+  PictureInPicture2,
 } from "lucide-react";
 import type { CardItem, LiveMediaItem, MediaItem } from "@/lib/mock-data";
 import { getEmbedUrl, SERVERS } from "@/lib/mock-data";
@@ -46,8 +47,11 @@ export function VideoPlayer({ item, onClose, onMiniPlayer, initialServerIndex = 
   const [iframeKey, setIframeKey] = useState(0);
   const [triedServers, setTriedServers] = useState<Set<number>>(new Set());
   const [fallbackInProgress, setFallbackInProgress] = useState(false);
+  const [isPipActive, setIsPipActive] = useState(false);
+  const isPipSupported = typeof window !== 'undefined' && 'documentPictureInPicture' in window;
   const loadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historyTrackedRef = useRef<string>("");
+  const pipWindowRef = useRef<Window | null>(null);
 
   const addToHistory = useHistoryStore((s) => s.addToHistory);
 
@@ -171,6 +175,63 @@ export function VideoPlayer({ item, onClose, onMiniPlayer, initialServerIndex = 
     setPlayerState("error");
   }, []);
 
+  // Toggle Picture-in-Picture
+  const togglePip = useCallback(async () => {
+    if (isPipActive && pipWindowRef.current) {
+      pipWindowRef.current.close();
+      return;
+    }
+
+    try {
+      // @ts-expect-error Document Picture-in-Picture API (Chrome 116+)
+      const pipWindow = await (window as any).documentPictureInPicture.requestWindow({
+        width: 854,
+        height: 480,
+      });
+
+      pipWindowRef.current = pipWindow;
+      setIsPipActive(true);
+
+      // Style the PiP window to match our dark theme
+      const styleEl = pipWindow.document.createElement('style');
+      styleEl.textContent = `
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #000; overflow: hidden; width: 100vw; height: 100vh; }
+        iframe { width: 100%; height: 100%; border: none; }
+      `;
+      pipWindow.document.head.appendChild(styleEl);
+
+      // Create a new iframe with the current embed URL
+      const pipIframe = pipWindow.document.createElement('iframe');
+      pipIframe.src = embedUrl;
+      pipIframe.allow = 'autoplay; fullscreen; encrypted-media; picture-in-picture';
+      pipIframe.allowFullscreen = true;
+      pipIframe.title = `${item.title} - PiP`;
+      pipWindow.document.body.appendChild(pipIframe);
+
+      // Listen for PiP window close
+      pipWindow.addEventListener('pagehide', () => {
+        setIsPipActive(false);
+        pipWindowRef.current = null;
+      });
+
+    } catch (err) {
+      console.error('Picture-in-Picture failed:', err);
+      setIsPipActive(false);
+      pipWindowRef.current = null;
+    }
+  }, [isPipActive, embedUrl, item.title]);
+
+  // Clean up PiP window on unmount
+  useEffect(() => {
+    return () => {
+      if (pipWindowRef.current) {
+        pipWindowRef.current.close();
+        pipWindowRef.current = null;
+      }
+    };
+  }, []);
+
   // Auto-advance on error
   useEffect(() => {
     if (playerState === "error") {
@@ -192,6 +253,21 @@ export function VideoPlayer({ item, onClose, onMiniPlayer, initialServerIndex = 
           <ChevronLeft size={18} />
           <span className="hidden sm:inline">Back</span>
         </button>
+        {/* PiP button */}
+        {isPipSupported && playerState === 'playing' && (
+          <button
+            onClick={togglePip}
+            className={`flex items-center gap-1.5 text-sm transition-colors cursor-pointer ${
+              isPipActive
+                ? 'text-streamex-accent'
+                : 'text-streamex-text-secondary hover:text-white'
+            }`}
+            title={isPipActive ? 'Exit Picture-in-Picture' : 'Picture-in-Picture'}
+          >
+            <PictureInPicture2 size={16} className={isPipActive ? 'fill-streamex-accent' : ''} />
+            <span className="hidden sm:inline">{isPipActive ? 'PiP On' : 'PiP'}</span>
+          </button>
+        )}
         {onMiniPlayer && (
           <button
             onClick={() => onMiniPlayer(activeServerIndex, season, episode)}

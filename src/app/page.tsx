@@ -63,6 +63,20 @@ export default function Home() {
   // Determine if we're in search mode
   const isInSearchMode = searchQuery.trim().length > 0 || isSearching;
 
+  // ⌘K / Ctrl+K shortcut to focus search
+  useEffect(() => {
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        // Focus the search input inside the sidebar
+        const searchInput = document.querySelector<HTMLInputElement>('input[placeholder*="Search"]');
+        searchInput?.focus();
+      }
+    }
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
+
   // Load stores on mount
   useEffect(() => {
     try {

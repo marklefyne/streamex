@@ -14,6 +14,8 @@ import {
   Clock,
   Heart,
   Loader2,
+  ArrowUpRight,
+  Star,
 } from "lucide-react";
 import type { CardItem } from "@/components/streamex/media-card";
 
@@ -50,8 +52,10 @@ export function Sidebar({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [isFocused, setIsFocused] = useState(false);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suggestionItemsRef = useRef<HTMLButtonElement[]>([]);
 
@@ -94,7 +98,20 @@ export function Sidebar({
 
     debounceTimerRef.current = setTimeout(() => {
       fetchSuggestions(value);
-    }, 300);
+    }, 250);
+  };
+
+  const clearSearch = () => {
+    onSearchChange("");
+    setHighlightedIndex(-1);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    inputRef.current?.focus();
+  };
+
+  const handleViewAllResults = () => {
+    setShowSuggestions(false);
+    setHighlightedIndex(-1);
   };
 
   const handleSuggestionClick = (item: CardItem) => {
@@ -182,93 +199,176 @@ export function Sidebar({
       {!isCollapsed && (
         <div className="px-3 pt-4 pb-2">
           <div className="relative" ref={searchContainerRef}>
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-streamex-text-secondary"
-              size={14}
-            />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => handleInputChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onFocus={() => {
-                if (suggestions.length > 0) {
-                  setShowSuggestions(true);
-                  setHighlightedIndex(-1);
-                }
-              }}
-              placeholder="Search..."
-              className="w-full bg-white/5 hover:bg-white/10 focus:bg-streamex-surface focus:ring-1 focus:ring-streamex-accent rounded-lg py-2 pl-8 pr-3 text-sm text-white placeholder:text-streamex-text-secondary focus:outline-none transition-all duration-200"
-            />
-
-            {/* Loading indicator */}
-            {isLoadingSuggestions && (
-              <Loader2
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-streamex-text-secondary animate-spin"
-                size={14}
+            {/* Enhanced search input */}
+            <div className={`relative flex items-center rounded-xl border transition-all duration-200 ${
+              isFocused
+                ? 'bg-streamex-surface border-streamex-accent/40 shadow-lg shadow-streamex-accent/5'
+                : 'bg-white/[0.04] border-transparent hover:bg-white/[0.07] hover:border-white/10'
+            }`}>
+              <Search
+                className={`absolute left-3 transition-colors duration-200 ${
+                  isFocused ? 'text-streamex-accent' : 'text-streamex-text-secondary'
+                }`}
+                size={15}
               />
+              <input
+                ref={inputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => handleInputChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onFocus={() => {
+                  setIsFocused(true);
+                  if (suggestions.length > 0) {
+                    setShowSuggestions(true);
+                    setHighlightedIndex(-1);
+                  }
+                }}
+                onBlur={() => {
+                  setIsFocused(false);
+                }}
+                placeholder="Search movies & shows..."
+                className="w-full bg-transparent rounded-xl py-2.5 pl-9 pr-9 text-sm text-white placeholder:text-streamex-text-secondary/60 focus:outline-none"
+              />
+
+              {/* Clear button */}
+              <AnimatePresence>
+                {searchQuery.length > 0 && !isLoadingSuggestions && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.1 }}
+                    onClick={clearSearch}
+                    className="absolute right-2 p-1 rounded-md text-streamex-text-secondary hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  >
+                    <X size={13} />
+                  </motion.button>
+                )}
+              </AnimatePresence>
+
+              {/* Loading spinner */}
+              {isLoadingSuggestions && (
+                <div className="absolute right-2.5">
+                  <Loader2 className="text-streamex-accent animate-spin" size={14} />
+                </div>
+              )}
+            </div>
+
+            {/* Keyboard shortcut hint */}
+            {!isFocused && searchQuery.length === 0 && (
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                <kbd className="hidden lg:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium text-streamex-text-secondary/50 bg-white/[0.03] border border-white/[0.06]">
+                  <span className="text-[9px]">⌘</span>K
+                </kbd>
+              </div>
             )}
 
-            {/* Suggestions dropdown */}
+            {/* Enhanced suggestions dropdown */}
             <AnimatePresence>
               {showSuggestions && suggestions.length > 0 && (
                 <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a1a] border border-streamex-border rounded-lg shadow-xl z-[100] overflow-hidden"
+                  initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                  transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute top-full left-0 right-0 mt-2 bg-[#161616] border border-streamex-border rounded-xl shadow-2xl shadow-black/50 z-[100] overflow-hidden"
                 >
-                  <ul className="py-1 max-h-80 overflow-y-auto custom-scrollbar">
+                  {/* Section header */}
+                  <div className="px-3 pt-3 pb-1.5">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-streamex-text-secondary/50">
+                      Suggestions
+                    </p>
+                  </div>
+
+                  <ul className="px-2 pb-2 max-h-[420px] overflow-y-auto custom-scrollbar">
                     {suggestions.map((item, idx) => (
-                      <li key={item.tmdb_id}>
+                      <li key={item.tmdb_id} className="mb-0.5">
                         <button
                           ref={(el) => { suggestionItemsRef.current[idx] = el!; }}
                           onClick={() => handleSuggestionClick(item)}
                           onMouseEnter={() => setHighlightedIndex(idx)}
-                          className={`w-full flex items-center gap-3 px-3 py-2 transition-colors duration-100 cursor-pointer text-left ${
+                          className={`w-full flex items-center gap-3 px-2.5 py-2 rounded-lg transition-all duration-150 cursor-pointer text-left group ${
                             idx === highlightedIndex
-                              ? "bg-white/10"
-                              : "hover:bg-white/10"
+                              ? 'bg-white/10'
+                              : 'hover:bg-white/[0.06]'
                           }`}
                         >
-                          {/* Poster thumbnail */}
-                          <div className="w-8 h-12 rounded object-cover flex-shrink-0 overflow-hidden bg-white/5">
+                          {/* Larger poster thumbnail */}
+                          <div className="w-10 h-[60px] rounded-md overflow-hidden flex-shrink-0 bg-white/5 shadow-md">
                             {item.posterImage ? (
                               <img
                                 src={item.posterImage}
                                 alt={item.title}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-streamex-text-secondary">
-                                <Film size={12} />
+                                <Film size={14} />
                               </div>
                             )}
                           </div>
 
-                          <div className="min-w-0 flex-1">
-                            <p className={`text-sm truncate leading-tight ${
-                              idx === highlightedIndex ? "text-white" : "text-white"
-                            }`}>
-                              {item.title}
-                            </p>
-                            <p className="text-xs text-streamex-text-secondary mt-0.5">
-                              {item.year}{item.year && item.type ? " · " : ""}{item.type}
-                            </p>
-                            <div className="text-[10px] flex items-center gap-1 mt-1">
-                              {item.rating > 0 && (
-                                <span className="text-yellow-500">★ {item.rating.toFixed(1)}</span>
-                              )}
-                              {item.genres.length > 0 && (
-                                <span className="text-streamex-text-secondary/60">{item.genres[0]}</span>
+                          <div className="min-w-0 flex-1 py-0.5">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-[13px] font-medium text-white truncate leading-snug">
+                                {item.title}
+                              </p>
+                              {idx === highlightedIndex && (
+                                <ArrowUpRight size={13} className="text-streamex-text-secondary flex-shrink-0 mt-0.5" />
                               )}
                             </div>
+
+                            <div className="flex items-center gap-2 mt-1">
+                              {/* Type badge */}
+                              <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${
+                                item.type === 'Movie'
+                                  ? 'bg-blue-500/15 text-blue-400'
+                                  : 'bg-purple-500/15 text-purple-400'
+                              }`}>
+                                {item.type === 'Movie' ? 'Movie' : 'TV'}
+                              </span>
+                              {item.year && (
+                                <span className="text-[11px] text-streamex-text-secondary/70">
+                                  {item.year}
+                                </span>
+                              )}
+                              {item.rating > 0 && (
+                                <span className="flex items-center gap-0.5 text-[11px]">
+                                  <Star size={10} className="fill-yellow-500 text-yellow-500" />
+                                  <span className="text-yellow-400 font-medium">{item.rating.toFixed(1)}</span>
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Genre tags */}
+                            {item.genres.length > 0 && (
+                              <div className="flex items-center gap-1 mt-1.5 overflow-hidden">
+                                {item.genres.slice(0, 2).map((g) => (
+                                  <span
+                                    key={g}
+                                    className="text-[9px] px-1.5 py-0.5 rounded-full bg-white/[0.05] text-streamex-text-secondary/60 truncate max-w-[80px]"
+                                  >
+                                    {g}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </button>
                       </li>
                     ))}
                   </ul>
+
+                  {/* View all results footer */}
+                  <button
+                    onClick={handleViewAllResults}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white/[0.03] hover:bg-white/[0.06] border-t border-streamex-border text-xs text-streamex-text-secondary hover:text-white transition-colors cursor-pointer"
+                  >
+                    <Search size={12} />
+                    View all results for "{searchQuery}"
+                    <ArrowUpRight size={11} />
+                  </button>
                 </motion.div>
               )}
             </AnimatePresence>
