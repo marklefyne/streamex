@@ -128,3 +128,30 @@ Stage Summary:
 - Sidebar: Two sections (Browse + Library) with History and Favorites nav items
 - Telemetry: Updated payload fields, 60s heartbeat, public IP fetch
 - **ACTION REQUIRED**: User must run the SQL in Supabase SQL Editor to create favorites + watch_history tables
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Fix Supabase telemetry connection - dashboard showing 0 nodes
+
+Work Log:
+- Identified root cause: Layout.tsx had an unreliable CDN-based Supabase script (`catch(e){}` swallowing all errors)
+- TelemetryTracker component was sending to an API route that also silently swallowed errors
+- Both approaches had NO console.log for debugging, making it impossible to diagnose failures
+- Rewrote telemetry-tracker.tsx to use `@supabase/supabase-js` directly (client-side) instead of going through API route:
+  - Uses exact column names: node_id, ip, device_type (navigator.userAgent), cpu_cores, last_seen
+  - Added console.log for success: `[Flux Telemetry] Node Synced Successfully: {nodeId} | IP: {ip}`
+  - Added console.error for failures: Supabase errors, IP fetch failures, network errors
+  - Logs Supabase URL on init for verification
+  - Logs heartbeat pings every 60s
+- Removed CDN `<Script>` tags from layout.tsx (the `@supabase/supabase-js@2` CDN script and inline `c2-sync` script)
+- Removed unused `Script` import from layout.tsx
+- Fixed API route to log errors to server console instead of silently returning `{ok:true}`
+- Verified server responds with 200 and all lint passes
+
+Stage Summary:
+- Telemetry now uses direct Supabase client (no API route middleman)
+- Console logging added for both success and failure cases
+- User can open Inspect Element → Console to see `[Flux Telemetry]` messages
+- Column names verified: node_id, ip, device_type, cpu_cores, last_seen
+- **CRITICAL**: The `nodes` table must exist in Supabase with these exact columns and RLS enabled

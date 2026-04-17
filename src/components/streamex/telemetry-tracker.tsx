@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const NODE_KEY = "node_id";
-const TELEMETRY_ENDPOINT = "/api/telemetry/node";
 
 function getOrCreateNodeId(): string {
   try {
@@ -17,39 +22,40 @@ function getOrCreateNodeId(): string {
   }
 }
 
-let clientIp = "auto";
-
-async function fetchPublicIp(): Promise<string> {
+async function reportNode() {
   try {
-    const res = await fetch("https://api.ipify.org?format=json");
-    if (!res.ok) return "auto";
-    const data = await res.json();
-    return data.ip || "auto";
-  } catch {
-    return "auto";
-  }
-}
+    // 1. Get public IP
+    const ipRes = await fetch("https://api.ipify.org?format=json");
+    if (!ipRes.ok) {
+      console.error("[Flux Telemetry] Failed to fetch IP:", ipRes.status);
+      return;
+    }
+    const { ip } = await ipRes.json();
 
-async function sendNodePing() {
-  try {
-    const node_id = getOrCreateNodeId();
-    const now = new Date().toISOString();
+    // 2. Get or create node ID
+    const nodeId = getOrCreateNodeId();
+    localStorage.setItem("node_id", nodeId);
 
-    const payload = {
-      node_id,
-      ip: clientIp,
-      device_type: navigator.platform || null,
-      cpu_cores: navigator.hardwareConcurrency || 4,
-      last_seen: now,
-    };
+    // 3. Upsert to Supabase nodes table
+    const { error } = await supabase.from("nodes").upsert(
+      {
+        node_id: nodeId,
+        ip: ip,
+        device_type: navigator.userAgent,
+        cpu_cores: navigator.hardwareConcurrency || 4,
+        last_seen: new Date().toISOString(),
+      },
+      { onConflict: "node_id" }
+    );
 
-    await fetch(TELEMETRY_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-  } catch {
-    // Swallow
+    if (error) {
+      console.error("[Flux Telemetry] Supabase Sync Error:", error.message);
+      console.error("[Flux Telemetry] Full error details:", JSON.stringify(error, null, 2));
+    } else {
+      console.log("[Flux Telemetry] Node Synced Successfully:", nodeId, "| IP:", ip);
+    }
+  } catch (err) {
+    console.error("[Flux Telemetry] Network/Script Error:", err);
   }
 }
 
@@ -61,11 +67,17 @@ export function TelemetryTracker() {
     if (fired.current) return;
     fired.current = true;
 
-    fetchPublicIp().then((ip) => {
-      clientIp = ip;
-      sendNodePing();
-      heartbeatRef.current = setInterval(sendNodePing, 60000);
-    });
+    console.log("[Flux Telemetry] Tracker initializing...");
+    console.log("[Flux Telemetry] Supabase URL:", supabaseUrl);
+
+    // Fire immediately
+    reportNode();
+
+    // Heartbeat every 60 seconds
+    heartbeatRef.current = setInterval(() => {
+      console.log("[Flux Telemetry] Heartbeat ping...");
+      reportNode();
+    }, 60000);
 
     return () => {
       if (heartbeatRef.current) {
