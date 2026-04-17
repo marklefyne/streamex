@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Play,
@@ -40,6 +40,27 @@ export function MovieDetail({ item, similarItems, onBack }: MovieDetailProps) {
 
   const isFav = useFavoritesStore((s) => s.isFavorite(item.tmdb_id));
   const toggleFavorite = useFavoritesStore((s) => s.toggleFavorite);
+
+  // Record view event for trending analytics
+  const viewRecordedRef = useRef(false);
+  useEffect(() => {
+    if (viewRecordedRef.current || !item.tmdb_id) return;
+    viewRecordedRef.current = true;
+    try {
+      fetch("/api/trending-views", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tmdb_id: item.tmdb_id,
+          title: item.title,
+          type: item.type,
+          posterImage: item.posterImage || "",
+        }),
+      });
+    } catch {
+      // silent — never crash the UI for analytics
+    }
+  }, [item.tmdb_id, item.title, item.type, item.posterImage]);
 
   const handlePlay = useCallback((serverIndex: number = 0) => {
     setInitialServerIndex(serverIndex);

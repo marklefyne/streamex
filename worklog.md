@@ -155,3 +155,103 @@ Stage Summary:
 - User can open Inspect Element → Console to see `[Flux Telemetry]` messages
 - Column names verified: node_id, ip, device_type, cpu_cores, last_seen
 - **CRITICAL**: The `nodes` table must exist in Supabase with these exact columns and RLS enabled
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: Add "Continue Watching" row on home page above Trending Now
+
+Work Log:
+- Added "▶ Continue Watching" MediaRow to the home view in /src/app/page.tsx
+- Row appears above "Trending Now" and only renders when historyCards.length > 0
+- Shows the 5 most recent history items via historyCards.slice(0, 5)
+- Uses existing MediaRow component with handleSelectItem handler
+- Reuses existing historyCards useMemo conversion (no changes needed to conversion logic)
+- Row respects the same view conditions: !isInSearchMode && activeView === "home"
+- All lint checks pass with zero errors
+
+Stage Summary:
+- Single change to /src/app/page.tsx: added 3 lines (conditional MediaRow for Continue Watching)
+- No new imports needed (uses existing historyCards, MediaRow, handleSelectItem)
+- No changes to existing functionality — purely additive feature
+- Row auto-hides when watch history is empty
+
+---
+Task ID: 7
+Agent: Main Agent
+Task: Add search auto-suggestions dropdown to sidebar search input
+
+Work Log:
+- Updated /src/components/streamex/sidebar.tsx with search auto-suggestions feature
+- Added new imports: useEffect, useRef, useCallback from React; Loader2 and Film from lucide-react; CardItem type from media-card
+- Extended SidebarProps interface with optional `onSelectSuggestion?: (item: CardItem) => void` prop
+- Added state: suggestions (CardItem[]), showSuggestions (boolean), isLoadingSuggestions (boolean)
+- Added searchContainerRef for click-outside detection
+- Implemented debounced fetch (300ms) triggered on 2+ character input via handleInputChange
+- Fetches from /api/tmdb/search?query=... and displays up to 5 results
+- Each suggestion shows: small poster thumbnail (w-8 h-12 rounded object-cover), title, year · type
+- Clicking a suggestion calls onSearchChange(item.title), hides dropdown, and calls onSelectSuggestion if provided
+- Pressing Escape or clicking outside the search container hides the dropdown
+- Focusing the input re-shows suggestions if previously loaded
+- Loading spinner (Loader2 icon) shown during API fetch
+- Styled dropdown: bg-[#1a1a1a], border-streamex-border, shadow-xl, z-[100], rounded-lg
+- Hover state: bg-white/10 on suggestion items
+- Animated with framer-motion AnimatePresence (fade + slide)
+- Existing search behavior (Enter key to trigger full search) preserved — no changes to page.tsx
+- All lint checks pass with zero errors
+
+Stage Summary:
+- Single file modified: /src/components/streamex/sidebar.tsx
+- Search auto-suggestions: debounced 300ms, 2+ chars, max 5 results from TMDB API
+- Optional onSelectSuggestion prop allows parent to handle suggestion clicks for navigation
+- No changes to page.tsx or any other file — fully backward compatible
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: Add content trending analytics system — "Most Watched Now" row
+
+Work Log:
+- Updated .env.local with new Supabase anon key (project ref: muehmdtvffnxpjanoqqm)
+- Created /src/app/api/trending-views/route.ts — POST + GET endpoints:
+  - POST: Records a view event. Checks if row exists for tmdb_id; if yes, increments view_count + updates metadata; if no, inserts new row
+  - GET: Returns top 10 most recently viewed content from content_views table
+  - All errors handled gracefully — never crashes the site, returns { items: [] } on failure
+  - Uses server-side Supabase client from @/lib/supabase
+- Created /src/lib/trending-store.ts — Zustand store:
+  - Interface: { items: TrendingViewItem[], loaded: boolean, fetchTrending: () => Promise<void> }
+  - TrendingViewItem: { tmdb_id, title, type, posterImage, view_count }
+  - On fetch, calls GET /api/trending-views and sets items; on failure, sets loaded=true with empty items
+- Modified /src/app/page.tsx:
+  - Imported useTrendingStore and TrendingViewItem
+  - Added trendingViewsItems and fetchTrending from store
+  - Called fetchTrending() in the existing mount useEffect
+  - Added trendingViewsCards useMemo converting TrendingViewItem[] to CardItem[] (same pattern as historyCards)
+  - Added "🔥 Most Watched Now" MediaRow between "Continue Watching" and "Trending Now"
+  - Row only renders when trendingViewsCards.length > 0, shows up to 10 items
+- Modified /src/components/streamex/movie-detail.tsx:
+  - Added useEffect and useRef imports
+  - Added useEffect that fires once on component mount with valid item
+  - POSTs to /api/trending-views with tmdb_id, title, type, posterImage
+  - Uses viewRecordedRef to prevent duplicate fires
+  - Wrapped in try/catch — never affects UX
+- All lint checks pass with zero errors
+
+Stage Summary:
+- New files: src/app/api/trending-views/route.ts, src/lib/trending-store.ts
+- Modified files: src/app/page.tsx, src/components/streamex/movie-detail.tsx, .env.local
+- "🔥 Most Watched Now" row on home page shows top 10 most actively viewed content across all users
+- View events recorded automatically when any user opens a movie/show detail page
+- **ACTION REQUIRED**: User must create the `content_views` table in Supabase SQL Editor:
+  ```sql
+  create table content_views (
+    tmdb_id integer primary key,
+    title text,
+    type text,
+    poster_image text,
+    view_count integer default 1,
+    last_viewed timestamptz default now()
+  );
+  alter table content_views enable row level security;
+  create policy "Allow anon all" on content_views for all using (true) with check (true);
+  ```

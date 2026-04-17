@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Home,
@@ -13,13 +13,16 @@ import {
   ChevronRight,
   Clock,
   Heart,
+  Loader2,
 } from "lucide-react";
+import type { CardItem } from "@/components/streamex/media-card";
 
 interface SidebarProps {
   activeView: string;
   onViewChange: (view: string) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  onSelectSuggestion?: (item: CardItem) => void;
 }
 
 const navItems = [
@@ -39,11 +42,96 @@ export function Sidebar({
   onViewChange,
   searchQuery,
   onSearchChange,
+  onSelectSuggestion,
 }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState<CardItem[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isActive = (id: string) => activeView === id;
+
+  const fetchSuggestions = useCallback(async (query: string) => {
+    if (query.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setIsLoadingSuggestions(false);
+      return;
+    }
+
+    setIsLoadingSuggestions(true);
+    try {
+      const res = await fetch(`/api/tmdb/search?query=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      setSuggestions(data.items?.slice(0, 5) ?? []);
+      setShowSuggestions(true);
+    } catch {
+      setSuggestions([]);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  }, []);
+
+  const handleInputChange = (value: string) => {
+    onSearchChange(value);
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    if (value.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      fetchSuggestions(value);
+    }, 300);
+  };
+
+  const handleSuggestionClick = (item: CardItem) => {
+    onSearchChange(item.title);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    if (onSelectSuggestion) {
+      onSelectSuggestion(item);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setShowSuggestions(false);
+    }
+  };
+
+  // Click outside handler
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleNavClick = (id: string) => {
     onViewChange(id);
@@ -71,7 +159,7 @@ export function Sidebar({
       {/* Search */}
       {!isCollapsed && (
         <div className="px-3 pt-4 pb-2">
-          <div className="relative">
+          <div className="relative" ref={searchContainerRef}>
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 text-streamex-text-secondary"
               size={14}
@@ -79,10 +167,73 @@ export function Sidebar({
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
+              onChange={(e) => handleInputChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onFocus={() => {
+                if (suggestions.length > 0) setShowSuggestions(true);
+              }}
               placeholder="Search..."
               className="w-full bg-white/5 hover:bg-white/10 focus:bg-streamex-surface focus:ring-1 focus:ring-streamex-accent rounded-lg py-2 pl-8 pr-3 text-sm text-white placeholder:text-streamex-text-secondary focus:outline-none transition-all duration-200"
             />
+
+            {/* Loading indicator */}
+            {isLoadingSuggestions && (
+              <Loader2
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-streamex-text-secondary animate-spin"
+                size={14}
+              />
+            )}
+
+            {/* Suggestions dropdown */}
+            <AnimatePresence>
+              {showSuggestions && suggestions.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a1a] border border-streamex-border rounded-lg shadow-xl z-[100] overflow-hidden"
+                >
+                  <ul className="py-1 max-h-80 overflow-y-auto custom-scrollbar">
+                    {suggestions.map((item) => (
+                      <li key={item.tmdb_id}>
+                        <button
+                          onClick={() => handleSuggestionClick(item)}
+                          className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/10 transition-colors duration-150 cursor-pointer text-left"
+                        >
+                          {/* Poster thumbnail */}
+                          <div className="w-8 h-12 rounded object-cover flex-shrink-0 overflow-hidden bg-white/5">
+                            {item.posterImage ? (
+                              <img
+                                src={item.posterImage}
+                                alt={item.title}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-streamex-text-secondary">
+                                <Film size={12} />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Title, year, type */}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-white truncate leading-tight">
+                              {item.title}
+                            </p>
+                            <p className="text-xs text-streamex-text-secondary mt-0.5">
+                              {item.year}
+                              {item.year && item.type ? " · " : ""}
+                              {item.type}
+                            </p>
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       )}

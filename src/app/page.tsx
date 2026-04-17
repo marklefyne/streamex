@@ -14,6 +14,7 @@ import { MovieDetail } from "@/components/streamex/movie-detail";
 import { SERVERS } from "@/lib/mock-data";
 import { useFavoritesStore, type FavoriteItem } from "@/lib/favorites-store";
 import { useHistoryStore, type HistoryEntry } from "@/lib/history-store";
+import { useTrendingStore, type TrendingViewItem } from "@/lib/trending-store";
 
 type ViewType =
   | "home"
@@ -46,6 +47,8 @@ export default function Home() {
   const history = useHistoryStore((s) => s.history);
   const loadHistory = useHistoryStore((s) => s.loadHistory);
   const clearHistory = useHistoryStore((s) => s.clearHistory);
+  const trendingViewsItems = useTrendingStore((s) => s.items);
+  const fetchTrending = useTrendingStore((s) => s.fetchTrending);
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchQueryRef = useRef("");
@@ -64,7 +67,8 @@ export default function Home() {
     } catch {
       // silent
     }
-  }, [loadFavorites, loadHistory]);
+    fetchTrending();
+  }, [loadFavorites, loadHistory, fetchTrending]);
 
   // Fetch all data on mount
   useEffect(() => {
@@ -204,6 +208,22 @@ export default function Home() {
       backdropImage: h.posterImage,
     })),
     [history]
+  );
+
+  const trendingViewsCards: CardItem[] = useMemo(() =>
+    trendingViewsItems.map((t: TrendingViewItem) => ({
+      id: `trending-view-${t.tmdb_id}`,
+      tmdb_id: t.tmdb_id,
+      title: t.title,
+      year: 0,
+      type: t.type as "Movie" | "TV Series",
+      rating: 0,
+      genres: [],
+      description: "",
+      posterImage: t.posterImage,
+      backdropImage: t.posterImage,
+    })),
+    [trendingViewsItems]
   );
 
   // Get similar items for the detail page
@@ -395,6 +415,12 @@ export default function Home() {
                   )}
 
                   <div className="space-y-2 py-6">
+                    {historyCards.length > 0 && (
+                      <MediaRow title="▶ Continue Watching" items={historyCards.slice(0, 5)} onSelect={handleSelectItem} />
+                    )}
+                    {trendingViewsCards.length > 0 && (
+                      <MediaRow title="🔥 Most Watched Now" items={trendingViewsCards.slice(0, 10)} onSelect={handleSelectItem} />
+                    )}
                     {trendingItems.length > 0 && (
                       <MediaRow title="Trending Now" items={trendingItems} onSelect={handleSelectItem} />
                     )}
