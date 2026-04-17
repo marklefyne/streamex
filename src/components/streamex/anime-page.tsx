@@ -17,30 +17,11 @@ import {
   AlertCircle,
   ChevronUp,
 } from "lucide-react";
-import { type CardItem } from "@/components/streamex/media-card";
+import { AnimeDetail, type AnimeItem } from "@/components/streamex/anime-detail";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
-
-interface AnimeItem {
-  id: string;
-  malId: number;
-  title: string;
-  japaneseTitle: string;
-  posterImage: string;
-  bannerImage: string;
-  description: string;
-  rating: number;
-  year: number;
-  episodes: number;
-  status: string;
-  type: string;
-  genres: string[];
-  studios: string[];
-  hasSub: boolean;
-  hasDub: boolean;
-}
 
 interface AnimeSection {
   type: "trending" | "season" | "top" | "upcoming";
@@ -52,7 +33,7 @@ interface AnimeSection {
 }
 
 interface AnimePageProps {
-  onSelect: (item: CardItem) => void;
+  onSelect: (item: never) => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -546,7 +527,8 @@ function ScrollToTop() {
 /*  Main AnimePage component                                           */
 /* ------------------------------------------------------------------ */
 
-export function AnimePage({ onSelect }: AnimePageProps) {
+export function AnimePage({ onSelect: _onSelect }: AnimePageProps) {
+  const [selectedAnime, setSelectedAnime] = useState<AnimeItem | null>(null);
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<AnimeItem[]>([]);
   const [searching, setSearching] = useState(false);
@@ -561,78 +543,11 @@ export function AnimePage({ onSelect }: AnimePageProps) {
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [anyError, setAnyError] = useState(false);
-  const [resolving, setResolving] = useState(false);
 
-  // Resolve anime MAL ID to TMDB ID, then convert to CardItem for onSelect
-  const handleAnimeSelect = useCallback(
-    async (anime: AnimeItem) => {
-      setResolving(true);
-      try {
-        const res = await fetch("/api/anime/resolve", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            mal_id: anime.malId,
-            title: anime.title,
-            japanese_title: anime.japaneseTitle,
-            year: anime.year,
-            episodes: anime.episodes,
-            studios: anime.studios,
-          }),
-        });
-
-        if (res.ok) {
-          const resolved = await res.json();
-
-          // Only accept if we got a valid tmdb_id (rejects low-confidence matches)
-          if (resolved.tmdb_id && !resolved.error) {
-            const cardItem: CardItem = {
-              id: `tv-${resolved.tmdb_id}`,
-              tmdb_id: resolved.tmdb_id,
-              title: resolved.title ?? anime.title,
-              year: resolved.year ?? anime.year,
-              type: "TV Series",
-              rating: resolved.rating ?? anime.rating,
-              genres: resolved.genres?.length ? resolved.genres : anime.genres,
-              description: resolved.description ?? anime.description,
-              posterImage: resolved.posterImage ?? anime.posterImage,
-              backdropImage: resolved.backdropImage ?? anime.bannerImage,
-              numberOfSeasons: resolved.numberOfSeasons,
-              numberOfEpisodes: resolved.numberOfEpisodes,
-              seasonEpisodes: resolved.seasonEpisodes,
-              malId: anime.malId,
-            };
-            setResolving(false);
-            onSelect(cardItem);
-            return;
-          }
-
-          // Resolve returned error (low confidence) — try using MAL ID directly with vidsrc
-          console.log(`[Anime] TMDB resolve had low confidence for "${anime.title}" (MAL: ${anime.malId}), using fallback`);
-        }
-      } catch {
-        // Resolve failed — fall back
-      }
-
-      // Fallback: use original anime data as TV Series with MAL ID
-      setResolving(false);
-      const cardItem: CardItem = {
-        id: anime.id,
-        tmdb_id: anime.malId,
-        title: anime.title,
-        year: anime.year,
-        type: "TV Series",
-        rating: anime.rating,
-        genres: anime.genres,
-        description: anime.description,
-        posterImage: anime.posterImage,
-        backdropImage: anime.bannerImage,
-        malId: anime.malId,
-      };
-      onSelect(cardItem);
-    },
-    [onSelect]
-  );
+  // Open anime detail view instead of resolving to generic movie player
+  const handleAnimeSelect = useCallback((anime: AnimeItem) => {
+    setSelectedAnime(anime);
+  }, []);
 
   // Fetch all sections in parallel on mount
   useEffect(() => {
@@ -720,6 +635,11 @@ export function AnimePage({ onSelect }: AnimePageProps) {
     );
     setAnyError(false);
   }, []);
+
+  // If an anime is selected, show the dedicated detail view
+  if (selectedAnime) {
+    return <AnimeDetail anime={selectedAnime} onBack={() => setSelectedAnime(null)} />;
+  }
 
   const isSearchMode = query.trim().length > 0;
 
@@ -938,23 +858,6 @@ export function AnimePage({ onSelect }: AnimePageProps) {
           )}
         </AnimatePresence>
       </div>
-
-      {/* Resolving overlay — shown while looking up TMDB ID */}
-      <AnimatePresence>
-        {resolving && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center"
-          >
-            <div className="flex flex-col items-center gap-3">
-              <Loader2 className="animate-spin text-emerald-400" size={32} />
-              <p className="text-sm text-white/70">Resolving anime…</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <ScrollToTop />
     </div>

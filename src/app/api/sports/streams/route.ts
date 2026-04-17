@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 
 /**
  * Sports Streams API
- * Fetches available stream URLs for sports events.
- * Uses multiple aggregator sources with automatic failover.
+ * Provides always-available HLS test streams as fallback.
+ * Returns working stream URLs for sports events.
  */
 
 // Cache
@@ -16,6 +16,17 @@ interface StreamSource {
   type: "hls" | "iframe" | "mp4";
   quality: string;
 }
+
+/**
+ * 5 always-available HLS test streams (public, reliable, no auth needed).
+ */
+const FALLBACK_HLS_STREAMS: StreamSource[] = [
+  { server: "server-1", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", type: "hls", quality: "HD" },
+  { server: "server-2", url: "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8", type: "hls", quality: "HD" },
+  { server: "server-3", url: "https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8", type: "hls", quality: "SD" },
+  { server: "server-4", url: "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8", type: "hls", quality: "HD" },
+  { server: "server-5", url: "https://storage.googleapis.com/shaka-demo-assets/angel-one.m3u8", type: "hls", quality: "SD" },
+];
 
 /**
  * Get available streams for a match.
@@ -35,25 +46,12 @@ export async function GET(request: Request) {
       return NextResponse.json(cached.data as object);
     }
 
-    // Build stream sources based on sport type
     const streams: StreamSource[] = [];
 
-    // Try to fetch from sports streaming aggregators
-    const query = `${team1} ${team2} ${sport}`.trim();
+    // Add sport-specific streams (all working HLS test streams)
+    streams.push(...getSportSpecificStreams(sport, team1, team2));
 
-    // Source 1: Try cricfree-style aggregator (returns embed URLs)
-    try {
-      const agg1Streams = await fetchFromAggregator(query, sport);
-      streams.push(...agg1Streams);
-    } catch {
-      // Aggregator failed, continue with other sources
-    }
-
-    // Source 2: Sport-specific sources
-    const sportStreams = getSportSpecificStreams(sport, team1, team2);
-    streams.push(...sportStreams);
-
-    // Source 3: Generic fallback streams (always available)
+    // Add fallback streams that are always available
     streams.push(...getFallbackStreams(sport));
 
     const response = {
@@ -76,117 +74,20 @@ export async function GET(request: Request) {
 }
 
 /**
- * Fetch streams from aggregator sources.
- */
-async function fetchFromAggregator(query: string, sport: string): Promise<StreamSource[]> {
-  const streams: StreamSource[] = [];
-
-  // Try to find streams from TheSportsDB / similar free APIs
-  // TheSportsDB doesn't provide streams, but we can use it to verify match exists
-  // For actual streams, we use known embed sources
-
-  // Football/Soccer specific sources
-  if (sport.toLowerCase().includes("football") || sport.toLowerCase().includes("soccer")) {
-    // These are placeholder URLs for the architecture — in production,
-    // you would connect to actual sports streaming APIs
-    // The HLS.js player and auto-failover system will handle them correctly
-  }
-
-  return streams;
-}
-
-/**
  * Get sport-specific stream sources.
+ * All return working public HLS test streams — no fake URLs.
  */
-function getSportSpecificStreams(sport: string, team1: string, team2: string): StreamSource[] {
-  const streams: StreamSource[] = [];
-
-  // Build a search-friendly match name
-  const matchName = `${team1.replace(/\s+/g, "-").toLowerCase()}-vs-${team2.replace(/\s+/g, "-").toLowerCase()}`;
-
-  switch (sport.toLowerCase()) {
-    case "football":
-    case "soccer":
-      // Football streams from known embed sources
-      streams.push({
-        server: "server-1",
-        url: `https://widevine.cfd/channel/${matchName}`,
-        type: "iframe",
-        quality: "HD",
-      });
-      streams.push({
-        server: "server-2",
-        url: `https://v2.sportsonline.si/watch/${matchName}/stream-1`,
-        type: "iframe",
-        quality: "HD",
-      });
-      break;
-
-    case "basketball":
-      streams.push({
-        server: "server-1",
-        url: `https://widevine.cfd/channel/${matchName}`,
-        type: "iframe",
-        quality: "HD",
-      });
-      break;
-
-    case "fighting":
-    case "boxing":
-    case "ufc":
-      streams.push({
-        server: "server-1",
-        url: `https://widevine.cfd/channel/${matchName}`,
-        type: "iframe",
-        quality: "HD",
-      });
-      break;
-
-    case "esports":
-      // Esports often have official Twitch/YouTube streams
-      streams.push({
-        server: "server-1",
-        url: `https://widevine.cfd/channel/${matchName}`,
-        type: "iframe",
-        quality: "HD",
-      });
-      break;
-
-    default:
-      streams.push({
-        server: "server-1",
-        url: `https://widevine.cfd/channel/${matchName}`,
-        type: "iframe",
-        quality: "HD",
-      });
-  }
-
-  return streams;
+function getSportSpecificStreams(sport: string, _team1: string, _team2: string): StreamSource[] {
+  // Return working HLS test streams for all sports.
+  // In a production environment, these would be real sports stream URLs
+  // from sports streaming APIs. For now, we use always-available test streams.
+  return FALLBACK_HLS_STREAMS;
 }
 
 /**
  * Get fallback streams that are always available.
- * These serve as last-resort options.
+ * Returns 5 working HLS test streams.
  */
-function getFallbackStreams(sport: string): StreamSource[] {
-  return [
-    {
-      server: "server-fallback-1",
-      url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
-      type: "hls",
-      quality: "HD",
-    },
-    {
-      server: "server-fallback-2",
-      url: "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8",
-      type: "hls",
-      quality: "HD",
-    },
-    {
-      server: "server-fallback-3",
-      url: "https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8",
-      type: "hls",
-      quality: "SD",
-    },
-  ];
+function getFallbackStreams(_sport: string): StreamSource[] {
+  return FALLBACK_HLS_STREAMS;
 }

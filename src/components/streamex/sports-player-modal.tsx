@@ -24,7 +24,7 @@ export interface SportMatch {
   color1: string;
   color2: string;
   viewers?: string;
-  /** Per-server stream URLs — keyed by "server-1", "server-2", "server-3" */
+  /** Per-server stream URLs — keyed by "server-1" through "server-5" */
   stream_urls?: Record<string, string>;
 }
 
@@ -36,6 +36,8 @@ const SPORT_SERVERS = [
   { id: "server-1", name: "Server 1", quality: "HD", icon: Zap, desc: "Primary — Fastest" },
   { id: "server-2", name: "Server 2", quality: "HD", icon: Shield, desc: "Backup — Stable" },
   { id: "server-3", name: "Server 3", quality: "SD", icon: HardDrive, desc: "Low bandwidth" },
+  { id: "server-4", name: "Server 4", quality: "HD", icon: MonitorPlay, desc: "Alternative source" },
+  { id: "server-5", name: "Server 5", quality: "SD", icon: Play, desc: "Last resort" },
 ];
 
 const AUTO_CYCLE_DELAY = 5; // seconds before trying next server
@@ -1025,7 +1027,7 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
                 )}
               </div>
 
-              <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-3">
+              <div className="grid grid-cols-5 gap-2 sm:gap-3 mb-3">
                 {serverUrlStatus.map((server) => {
                   const ServerIcon = server.icon;
                   const isActuallyActive = activeServer === server.id && !activeCustomUrl;
