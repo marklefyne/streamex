@@ -81,3 +81,21 @@ Work Log:
 Stage Summary:
 - Iframe sandbox attribute removed — Sportsurge embeds now load without the "Remove sandbox attributes" error
 - Live sports streams from sportsurge.lol should now display correctly in the player modal
+---
+Task ID: 4
+Agent: Main Agent
+Task: Investigate "movies and TV shows home screen not working"
+
+Work Log:
+- Started dev server and verified all TMDB API endpoints return 20 items each
+- Used agent-browser to load the actual page and take screenshots
+- Verified via VLM analysis: Home page shows hero section + trending rows, all populated
+- Verified Movies page: shows Trending Movies (20) + Top Rated (20) sections with cards
+- Verified TV Shows page: shows Trending Shows (20) + Popular TV Shows (20) sections
+- Verified Movie Detail page: shows title, rating, genres, synopsis, Play Now button
+- Verified Video Player: shows 5 server options (vidsrc.me, vidsrc.to, embed.su, etc.)
+- No console errors found in browser
+
+Stage Summary:
+- All pages are working correctly — the issue was likely stale cache from when TMDB API key was missing
+- User should hard-refresh (Ctrl+Shift+R) to see the updated content
