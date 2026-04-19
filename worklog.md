@@ -113,3 +113,40 @@ Stage Summary:
 - FIXED: sports/streams/route.ts — API returns same reliable streams
 - YouTube iframes (servers 1-2) load as <iframe> with onLoad → always work within timeout
 - HLS streams (servers 3-5) load via hls.js with generous 20s timeout + auto-cycle failover
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Replace hardcoded sports data with real ESPN API integration
+
+Work Log:
+- Added 3 optional fields to SportMatch interface in sports-player-modal.tsx: team1_logo, team2_logo, str_status
+- Created `/src/app/api/sports/espn/route.ts` — backend API that fetches real match data from ESPN's free public API
+  - Fetches from 10 ESPN endpoints: EPL, La Liga, Serie A, Bundesliga, Ligue 1, UCL, NBA, NHL, NFL, UFC
+  - Transforms ESPN response to SportMatch interface with proper status/sport/league mapping
+  - 2-minute Map-based cache (sports data changes fast)
+  - Promise.allSettled for resilience — if one league fails, others still work
+  - 8s timeout per league fetch, Next.js ISR revalidate: 120
+  - All matches include 5 stream server URLs, team logos from ESPN, hex colors
+- Rewrote `/src/components/streamex/live-sports.tsx` to use real API data
+  - Removed 28 hardcoded matches and SPORT_STREAMS constant
+  - Added useState/useEffect for fetching from /api/sports/espn on mount
+  - Added loading skeleton state with 12 skeleton cards while fetching
+  - Added error state with retry button
+  - Added Refresh button to re-fetch data (with spinning icon)
+  - Added "last updated" timestamp display
+  - Categories dynamically built from real data (Featured, Live Now, Football, Basketball, Hockey, Boxing & UFC, Upcoming)
+  - Featured hero card auto-selects best match (UCL live > any football live > any live > first match)
+  - Team logos shown via <img> tags when available from ESPN, falling back to colored initials
+  - Expanded card detail shows API status string
+  - Empty state messages are sport-aware ("No Football matches available right now")
+  - Kept all existing UI: sport filter pills, date filter dropdown, card hover/expand, player modal
+  - Cricket/Esports tabs show empty state messages (ESPN has no data for these)
+- Verified API returns 200 with 28 real matches across 10 leagues (2 live, 26 scheduled)
+- Lint passes clean
+
+Stage Summary:
+- NEW: /src/app/api/sports/espn/route.ts — ESPN scoreboard proxy with 10 league endpoints
+- MODIFIED: sports-player-modal.tsx — added team1_logo, team2_logo, str_status optional fields
+- MODIFIED: live-sports.tsx — complete rewrite: fake data → real ESPN API with loading/error/refresh states
+- API confirmed working: 28 matches, 10 leagues, team logos, real scores, live status detection

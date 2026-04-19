@@ -26,6 +26,12 @@ export interface SportMatch {
   viewers?: string;
   /** Per-server stream URLs — keyed by "server-1" through "server-5" */
   stream_urls?: Record<string, string>;
+  /** ESPN team logo URL for team1 */
+  team1_logo?: string;
+  /** ESPN team logo URL for team2 */
+  team2_logo?: string;
+  /** Original status string from ESPN */
+  str_status?: string;
 }
 
 /* ------------------------------------------------------------------ */

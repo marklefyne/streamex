@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronDown,
@@ -17,6 +17,8 @@ import {
   Radio,
   Eye,
   Zap,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { SportsPlayerModal, type SportMatch } from "./sports-player-modal";
 
@@ -46,207 +48,6 @@ const sportMeta: Record<SportType, { icon: string; accent: string; label: string
 };
 
 /* ================================================================== */
-/*  MATCH DATA — 28 matches across all sports                          */
-/* ================================================================== */
-
-// Mix of iframe embeds (always reliable) + HLS streams (hls.js native)
-const SPORT_STREAMS: Record<string, string> = {
-  "server-1": "https://www.youtube.com/embed/LXb3EKWsInQ",
-  "server-2": "https://www.youtube.com/embed/tyGDiVc2wyE",
-  "server-3": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
-  "server-4": "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8",
-  "server-5": "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8",
-};
-
-const allMatches: SportMatch[] = [
-  // --- Football (5) ---
-  { id: 1, team1: "Real Madrid",   team2: "PSG",              sport: "Football",  status: "live",      time: "72'",       score: "2 - 1",   league: "UEFA Champions League", color1: "#FEBE10", color2: "#004170", viewers: "1.2M",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-  { id: 2, team1: "Man City",      team2: "Liverpool",        sport: "Football",  status: "live",      time: "58'",       score: "1 - 1",   league: "Premier League",       color1: "#6CABDD", color2: "#C8102E", viewers: "980K",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-  { id: 3, team1: "Barcelona",     team2: "Bayern Munich",    sport: "Football",  status: "scheduled", time: "Tomorrow 3:00 PM",        league: "UEFA Champions League", color1: "#A50044", color2: "#DC052D",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-  { id: 4, team1: "Arsenal",       team2: "Chelsea",          sport: "Football",  status: "live",      time: "81'",       score: "3 - 2",   league: "Premier League",       color1: "#EF0107", color2: "#034694", viewers: "870K",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-  { id: 5, team1: "Inter Milan",   team2: "AC Milan",         sport: "Football",  status: "scheduled", time: "Upcoming 9:00 PM",       league: "Serie A",              color1: "#0068A8", color2: "#FB090B",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-
-  // --- Basketball (4) ---
-  { id: 6,  team1: "Lakers",       team2: "Warriors",         sport: "Basketball", status: "live",      time: "Q3 4:22",  score: "89 - 84", league: "NBA",                  color1: "#552583", color2: "#1D428A", viewers: "2.1M",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-  { id: 7,  team1: "Celtics",      team2: "Heat",             sport: "Basketball", status: "scheduled", time: "Tomorrow 8:30 PM",       league: "NBA",                  color1: "#007A33", color2: "#98002E",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-  { id: 8,  team1: "Bucks",        team2: "76ers",            sport: "Basketball", status: "live",      time: "Q2 6:15",  score: "54 - 48", league: "NBA",                  color1: "#00471B", color2: "#006BB6", viewers: "640K",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-  { id: 9,  team1: "Nuggets",      team2: "Suns",             sport: "Basketball", status: "scheduled", time: "Upcoming 10:00 PM",      league: "NBA",                  color1: "#0E2240", color2: "#1D1160",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-
-  // --- Fighting (4) ---
-  { id: 10, team1: "Tyson Fury",   team2: "Oleksandr Usyk",   sport: "Fighting",  status: "live",      time: "Rd 9",                  league: "Heavyweight Championship", color1: "#1E3A5F", color2: "#FFD700", viewers: "3.4M",
-    stream_urls: {
-      "server-1": "https://www.youtube.com/embed/MoU73PpOGKE",
-      "server-2": "https://www.youtube.com/embed/YXJFMt8hyww",
-      ...SPORT_STREAMS,
-    },
-  },
-  { id: 11, team1: "C. McGregor",  team2: "D. Poirier",       sport: "Fighting",  status: "scheduled", time: "Tomorrow 11:00 PM",      league: "UFC 310",              color1: "#006847", color2: "#8B0000",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-  { id: 12, team1: "Canelo",       team2: "Bivol",             sport: "Fighting",  status: "live",      time: "Rd 7",     score: "68-65",  league: "WBC Super Middleweight", color1: "#BE2535", color2: "#1E3A5F", viewers: "1.8M",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-  { id: 13, team1: "J. Jones",     team2: "S. Aspinall",       sport: "Fighting",  status: "scheduled", time: "Upcoming",               league: "UFC 311",              color1: "#000000", color2: "#DC143C",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-
-  // --- Cricket (3) ---
-  { id: 14, team1: "India",        team2: "Australia",        sport: "Cricket",    status: "live",      time: "32 Overs", score: "245/4",  league: "ICC World Cup",       color1: "#0066B3", color2: "#FFD700", viewers: "450M",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-  { id: 15, team1: "Pakistan",     team2: "England",          sport: "Cricket",    status: "scheduled", time: "Tomorrow 2:00 PM",       league: "ICC World Cup",       color1: "#01411C", color2: "#003366",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-  { id: 16, team1: "South Africa", team2: "New Zealand",      sport: "Cricket",    status: "live",      time: "28 Overs", score: "189/6",  league: "ICC World Cup",       color1: "#007A4D", color2: "#000000", viewers: "210M",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-
-  // --- Hockey (3) ---
-  { id: 17, team1: "Maple Leafs",  team2: "Bruins",           sport: "Hockey",     status: "live",      time: "P2 14:05",             league: "NHL",                  color1: "#00205B", color2: "#FFB81C", viewers: "320K",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-  { id: 18, team1: "Blackhawks",   team2: "Rangers",          sport: "Hockey",     status: "scheduled", time: "Tomorrow 7:00 PM",       league: "NHL",                  color1: "#CF0A2C", color2: "#0038A8",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-  { id: 19, team1: "Oilers",       team2: "Panthers",         sport: "Hockey",     status: "live",      time: "P3 8:30",  score: "3 - 2",  league: "NHL",                  color1: "#041E42", color2: "#041E42", viewers: "410K",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-
-  // --- Esports (5) ---
-  { id: 20, team1: "T1",           team2: "Gen.G",            sport: "Esports",    status: "live",      time: "Game 3",               league: "Worlds 2025 — LoL",   color1: "#E4002B", color2: "#1A1A1A", viewers: "4.2M",
-    stream_urls: {
-      "server-1": "https://www.youtube.com/embed/GfBcGFtHR8c",
-      "server-2": "https://www.youtube.com/embed/t6bMAgOb3GY",
-      ...SPORT_STREAMS,
-    },
-  },
-  { id: 21, team1: "NAVI",         team2: "FaZe Clan",        sport: "Esports",    status: "scheduled", time: "Tomorrow 6:00 PM",       league: "IEM Katowice — CS2",  color1: "#FFD700", color2: "#FF0000",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-  { id: 22, team1: "Sentinels",    team2: "LOUD",             sport: "Esports",    status: "live",      time: "Map 2",    score: "13-8",   league: "VCT Masters — VAL",  color1: "#FF4655", color2: "#00FF94", viewers: "1.1M",
-    stream_urls: {
-      "server-1": "https://www.youtube.com/embed/gDEkMJT3CuE",
-      ...SPORT_STREAMS,
-    },
-  },
-  { id: 23, team1: "Team Spirit",  team2: "Gaimin Gladiators",sport: "Esports",    status: "scheduled", time: "Upcoming 4:00 PM",       league: "The International — Dota 2", color1: "#4B2C7F", color2: "#00FF7F",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-  { id: 24, team1: "Cloud9",       team2: "100 Thieves",      sport: "Esports",    status: "scheduled", time: "Upcoming 8:00 PM",       league: "VCT Americas — VAL", color1: "#009BCD", color2: "#FF4444",
-    stream_urls: { ...SPORT_STREAMS },
-  },
-
-  // --- Catch-up / Replays (4) ---
-  { id: 25, team1: "Man Utd",      team2: " Arsenal",          sport: "Football",  status: "scheduled", time: "Yesterday",             league: "FA Cup — Highlights", color1: "#DA291C", color2: "#EF0107",
-    stream_urls: {
-      "server-1": "https://www.youtube.com/embed/H0RNMZPM8aI",
-      ...SPORT_STREAMS,
-    },
-  },
-  { id: 26, team1: "Warriors",     team2: "Celtics",          sport: "Basketball", status: "scheduled", time: "Yesterday",             league: "NBA Finals Replay",   color1: "#1D428A", color2: "#007A33",
-    stream_urls: {
-      "server-1": "https://www.youtube.com/embed/mXnk_Z0a7mk",
-      "server-2": "https://www.youtube.com/embed/hcbG2KPCa0E",
-      ...SPORT_STREAMS,
-    },
-  },
-  { id: 27, team1: "G2 Esports",   team2: "Fnatic",           sport: "Esports",    status: "scheduled", time: "2 days ago",            league: "Worlds 2025 — LoL",   color1: "#F7F7F7", color2: "#FF6B00",
-    stream_urls: {
-      "server-1": "https://www.youtube.com/embed/QJXgYxYXHSo",
-      ...SPORT_STREAMS,
-    },
-  },
-  { id: 28, team1: "M. Wilder",    team2: "A. Joshua",        sport: "Fighting",  status: "scheduled", time: "Last week",              league: "Heavyweight — Replay", color1: "#8B0000", color2: "#003366",
-    stream_urls: {
-      "server-1": "https://www.youtube.com/embed/aVEKJ7goZp0",
-      "server-2": "https://www.youtube.com/embed/Gd3YbNDKEwY",
-      ...SPORT_STREAMS,
-    },
-  },
-];
-
-/* ================================================================== */
-/*  CATEGORY SECTIONS                                                  */
-/* ================================================================== */
-
-interface CategorySection {
-  id: string;
-  title: string;
-  icon: React.ReactNode;
-  description?: string;
-  filter: (m: SportMatch[]) => SportMatch[];
-}
-
-function buildCategories(): CategorySection[] {
-  const liveMatches = (m: SportMatch[]) => m.filter((x) => x.status === "live");
-
-  return [
-    {
-      id: "featured",
-      title: "Featured Match",
-      icon: <Flame size={18} />,
-      description: "The biggest match happening right now",
-      filter: () => {
-        const featured = allMatches.find((m) => m.id === 10); // Fury vs Usyk
-        return featured ? [featured] : [];
-      },
-    },
-    {
-      id: "live-now",
-      title: "Live Now",
-      icon: <Radio size={18} />,
-      description: "All sports currently streaming",
-      filter: liveMatches,
-    },
-    {
-      id: "boxing-ufc",
-      title: "Boxing & UFC",
-      icon: <Swords size={18} />,
-      filter: (m) => m.filter((x) => x.sport === "Fighting"),
-    },
-    {
-      id: "esports",
-      title: "Esports Arena",
-      icon: <Gamepad2 size={18} />,
-      filter: (m) => m.filter((x) => x.sport === "Esports"),
-    },
-    {
-      id: "upcoming",
-      title: "Upcoming Events",
-      icon: <Calendar size={18} />,
-      filter: (m) => m.filter((x) => x.status === "scheduled" && x.id <= 24),
-    },
-    {
-      id: "catchup",
-      title: "Top-Rated Catch-up",
-      icon: <Star size={18} />,
-      description: "Popular replays and highlights",
-      filter: (m) => m.filter((x) => x.id >= 25),
-    },
-  ];
-}
-
-const CATEGORIES = buildCategories();
-
-/* ================================================================== */
 /*  MAIN COMPONENT                                                     */
 /* ================================================================== */
 
@@ -258,6 +59,41 @@ export function LiveSports() {
   const [selectedMatch, setSelectedMatch] = useState<SportMatch | null>(null);
   const [expandedCard, setExpandedCard] = useState<number | null>(null);
   const [matchStreams, setMatchStreams] = useState<Map<number, Record<string, string>>>(new Map());
+
+  // Real data state
+  const [matches, setMatches] = useState<SportMatch[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastFetched, setLastFetched] = useState<string | null>(null);
+
+  // Fetch real data from ESPN API
+  const fetchMatches = useCallback(async (showRefreshing = false) => {
+    if (showRefreshing) setIsRefreshing(true);
+    else setIsLoading(true);
+    setFetchError(null);
+
+    try {
+      const res = await fetch("/api/sports/espn");
+      if (!res.ok) throw new Error(`API returned ${res.status}`);
+
+      const data = await res.json();
+      const fetchedMatches: SportMatch[] = data.matches || [];
+      setMatches(fetchedMatches);
+      setLastFetched(data.fetched_at || new Date().toISOString());
+    } catch (err) {
+      console.error("[LiveSports] Failed to fetch matches:", err);
+      setFetchError("Failed to load live sports data. Please try again.");
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  // Fetch on mount
+  useEffect(() => {
+    fetchMatches();
+  }, [fetchMatches]);
 
   // Fetch streams from API for a specific match
   const handleWatchMatch = useCallback(async (match: SportMatch) => {
@@ -303,12 +139,12 @@ export function LiveSports() {
     setSelectedMatch(enrichedMatch);
   }, [matchStreams]);
 
-  const liveCount = allMatches.filter((m) => m.status === "live").length;
+  const liveCount = matches.filter((m) => m.status === "live").length;
 
   const filteredBySport = useMemo(() => {
-    if (activeSport === "All") return allMatches;
-    return allMatches.filter((m) => m.sport === activeSport);
-  }, [activeSport]);
+    if (activeSport === "All") return matches;
+    return matches.filter((m) => m.sport === activeSport);
+  }, [activeSport, matches]);
 
   const filteredByDate = useMemo(() => {
     if (dateFilter === "Today") return filteredBySport;
@@ -318,7 +154,9 @@ export function LiveSports() {
 
   /* ---- Build visible categories ---- */
   const visibleCategories = useMemo(() => {
-    if (activeSport === "All" && dateFilter === "Today") return CATEGORIES;
+    if (activeSport === "All" && dateFilter === "Today") {
+      return buildCategories(matches);
+    }
     // When filtered, flatten into a single "Matches" section
     return [{
       id: "matches",
@@ -326,7 +164,7 @@ export function LiveSports() {
       icon: <Filter size={18} />,
       filter: () => filteredByDate,
     }];
-  }, [activeSport, dateFilter, filteredByDate]);
+  }, [activeSport, dateFilter, filteredByDate, matches]);
 
   /* ---- Card animations ---- */
   const cardVariants = {
@@ -371,36 +209,56 @@ export function LiveSports() {
                   </span>
                   <span className="text-xs font-semibold text-red-400">{liveCount} live now</span>
                   <span className="text-white/10">|</span>
-                  <span className="text-xs text-white/30">{allMatches.length} total</span>
+                  <span className="text-xs text-white/30">{matches.length} total</span>
+                  {lastFetched && !isLoading && (
+                    <>
+                      <span className="text-white/10">|</span>
+                      <span className="text-[10px] text-white/20">
+                        Updated {new Date(lastFetched).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Date dropdown */}
-            <div className="relative">
+            <div className="flex items-center gap-2">
+              {/* Refresh button */}
               <button
-                onClick={() => { setDateDropdown(!dateDropdown); setSportDropdown(false); }}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:border-emerald-500/30 text-sm text-white/70 hover:text-white transition-all cursor-pointer"
+                onClick={() => fetchMatches(true)}
+                disabled={isLoading || isRefreshing}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:border-emerald-500/30 text-sm text-white/70 hover:text-white transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <Calendar size={14} className="text-emerald-400" />
-                <span className="hidden sm:inline">{dateFilter}</span>
-                <ChevronDown size={14} className={`text-white/30 transition-transform duration-200 ${dateDropdown ? "rotate-180" : ""}`} />
+                <RefreshCw size={14} className={`text-emerald-400 ${isRefreshing ? "animate-spin" : ""}`} />
+                <span className="hidden sm:inline">{isRefreshing ? "Refreshing…" : "Refresh"}</span>
               </button>
-              <AnimatePresence>
-                {dateDropdown && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                    className="absolute right-0 top-full mt-2 w-40 bg-[#141414] border border-white/[0.08] rounded-xl shadow-2xl shadow-black/60 z-50 overflow-hidden"
-                  >
-                    {dateOptions.map((d) => (
-                      <button key={d} onClick={() => { setDateFilter(d); setDateDropdown(false); }}
-                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors cursor-pointer ${dateFilter === d ? "bg-emerald-500/15 text-emerald-400 font-semibold" : "text-white/60 hover:bg-white/[0.04] hover:text-white"}`}>
-                        {d}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+
+              {/* Date dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => { setDateDropdown(!dateDropdown); setSportDropdown(false); }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:border-emerald-500/30 text-sm text-white/70 hover:text-white transition-all cursor-pointer"
+                >
+                  <Calendar size={14} className="text-emerald-400" />
+                  <span className="hidden sm:inline">{dateFilter}</span>
+                  <ChevronDown size={14} className={`text-white/30 transition-transform duration-200 ${dateDropdown ? "rotate-180" : ""}`} />
+                </button>
+                <AnimatePresence>
+                  {dateDropdown && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                      className="absolute right-0 top-full mt-2 w-40 bg-[#141414] border border-white/[0.08] rounded-xl shadow-2xl shadow-black/60 z-50 overflow-hidden"
+                    >
+                      {dateOptions.map((d) => (
+                        <button key={d} onClick={() => { setDateFilter(d); setDateDropdown(false); }}
+                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors cursor-pointer ${dateFilter === d ? "bg-emerald-500/15 text-emerald-400 font-semibold" : "text-white/60 hover:bg-white/[0.04] hover:text-white"}`}>
+                          {d}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
 
@@ -422,7 +280,7 @@ export function LiveSports() {
                   <span>{label}</span>
                   {key !== "All" && isActive && (
                     <span className="text-[10px] bg-white/20 px-1 py-0.5 rounded-full ml-0.5">
-                      {allMatches.filter((m) => m.sport === key).length}
+                      {matches.filter((m) => m.sport === key).length}
                     </span>
                   )}
                 </button>
@@ -433,72 +291,138 @@ export function LiveSports() {
       </div>
 
       {/* ============================================================ */}
+      {/*  LOADING STATE                                                */}
+      {/* ============================================================ */}
+      {isLoading && (
+        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 py-16">
+          <div className="flex flex-col items-center justify-center">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-5 border border-emerald-500/20">
+              <Loader2 size={28} className="text-emerald-400 animate-spin" />
+            </div>
+            <h3 className="text-lg font-semibold text-white mb-2">Loading Live Sports</h3>
+            <p className="text-sm text-white/30 max-w-xs text-center">
+              Fetching real-time match data from ESPN…
+            </p>
+          </div>
+          {/* Skeleton grid */}
+          <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="rounded-2xl overflow-hidden bg-[#0f0f0f] border border-white/[0.05]">
+                <div className="h-24 sm:h-28 bg-white/[0.03] skeleton-shimmer" />
+                <div className="p-3 space-y-2.5">
+                  <div className="h-3 bg-white/[0.04] rounded w-3/4 skeleton-shimmer" />
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-white/[0.04] skeleton-shimmer" />
+                    <div className="h-3 bg-white/[0.03] rounded flex-1 skeleton-shimmer" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-white/[0.04] skeleton-shimmer" />
+                    <div className="h-3 bg-white/[0.03] rounded flex-1 skeleton-shimmer" />
+                  </div>
+                  <div className="h-8 bg-white/[0.03] rounded-lg skeleton-shimmer" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/*  ERROR STATE                                                  */}
+      {/* ============================================================ */}
+      {!isLoading && fetchError && (
+        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 py-16">
+          <div className="flex flex-col items-center justify-center text-center">
+            <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mb-5 border border-red-500/20">
+              <Zap size={28} className="text-red-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-white mb-2">Failed to Load Sports Data</h3>
+            <p className="text-sm text-white/30 max-w-xs mb-6">{fetchError}</p>
+            <button
+              onClick={() => fetchMatches()}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-bold transition-all cursor-pointer shadow-lg shadow-emerald-500/25"
+            >
+              <RefreshCw size={16} />
+              Try Again
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
       {/*  CONTENT SECTIONS                                             */}
       {/* ============================================================ */}
-      <div className="max-w-[1800px] mx-auto px-4 sm:px-6 pb-12">
-        {visibleCategories.map((cat) => {
-          const items = cat.filter(filteredByDate);
-          if (items.length === 0) return null;
+      {!isLoading && !fetchError && (
+        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 pb-12">
+          {visibleCategories.map((cat) => {
+            const items = cat.filter(filteredByDate);
+            if (items.length === 0) return null;
 
-          const isFeatured = cat.id === "featured";
+            const isFeatured = cat.id === "featured";
 
-          return (
-            <section key={cat.id} className="mb-10 sm:mb-14">
-              {/* Section header */}
-              <div className="flex items-center gap-3 mb-4 sm:mb-5">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                  {cat.icon}
-                </div>
-                <div>
-                  <h2 className="text-lg sm:text-xl font-bold text-white">{cat.title}</h2>
-                  {cat.description && (
-                    <p className="text-xs text-white/30 mt-0.5">{cat.description}</p>
+            return (
+              <section key={cat.id} className="mb-10 sm:mb-14">
+                {/* Section header */}
+                <div className="flex items-center gap-3 mb-4 sm:mb-5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                    {cat.icon}
+                  </div>
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-bold text-white">{cat.title}</h2>
+                    {cat.description && (
+                      <p className="text-xs text-white/30 mt-0.5">{cat.description}</p>
+                    )}
+                  </div>
+                  {items.length > 0 && !isFeatured && (
+                    <span className="ml-auto text-xs text-white/20 font-medium">{items.length} events</span>
                   )}
                 </div>
-                {items.length > 0 && !isFeatured && (
-                  <span className="ml-auto text-xs text-white/20 font-medium">{items.length} events</span>
+
+                {/* === FEATURED HERO CARD === */}
+                {isFeatured && items.length > 0 && (
+                  <FeaturedHeroCard match={items[0]} onWatch={() => handleWatchMatch(items[0])} />
                 )}
+
+                {/* === MATCH CARD GRID === */}
+                {!isFeatured && (
+                  <motion.div
+                    className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4"
+                    initial="hidden" animate="visible"
+                  >
+                    {items.map((match, i) => (
+                      <MatchCard
+                        key={match.id}
+                        match={match}
+                        index={i}
+                        variants={cardVariants}
+                        isExpanded={expandedCard === match.id}
+                        onToggleExpand={() => setExpandedCard(expandedCard === match.id ? null : match.id)}
+                        onWatchNow={() => handleWatchMatch(match)}
+                      />
+                    ))}
+                  </motion.div>
+                )}
+              </section>
+            );
+          })}
+
+          {/* Empty state */}
+          {visibleCategories.every((cat) => cat.filter(filteredByDate).length === 0) && (
+            <div className="flex flex-col items-center justify-center py-32 text-center">
+              <div className="w-20 h-20 rounded-2xl bg-white/[0.03] flex items-center justify-center mb-5 border border-white/[0.04]">
+                <Trophy size={32} className="text-white/10" />
               </div>
-
-              {/* === FEATURED HERO CARD === */}
-              {isFeatured && items.length > 0 && (
-                <FeaturedHeroCard match={items[0]} onWatch={() => handleWatchMatch(items[0])} />
-              )}
-
-              {/* === MATCH CARD GRID === */}
-              {!isFeatured && (
-                <motion.div
-                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4"
-                  initial="hidden" animate="visible"
-                >
-                  {items.map((match, i) => (
-                    <MatchCard
-                      key={match.id}
-                      match={match}
-                      index={i}
-                      variants={cardVariants}
-                      isExpanded={expandedCard === match.id}
-                      onToggleExpand={() => setExpandedCard(expandedCard === match.id ? null : match.id)}
-                      onWatchNow={() => handleWatchMatch(match)}
-                    />
-                  ))}
-                </motion.div>
-              )}
-            </section>
-          );
-        })}
-
-        {/* Empty state */}
-        {visibleCategories.every((cat) => cat.filter(filteredByDate).length === 0) && (
-          <div className="flex flex-col items-center justify-center py-32 text-center">
-            <div className="w-20 h-20 rounded-2xl bg-white/[0.03] flex items-center justify-center mb-5 border border-white/[0.04]">
-              <Trophy size={32} className="text-white/10" />
+              <h3 className="text-xl font-semibold text-white mb-2">No matches found</h3>
+              <p className="text-sm text-white/30 max-w-xs">
+                {activeSport !== "All"
+                  ? `No ${sportMeta[activeSport as SportType]?.label || activeSport} matches available right now. Try another sport or check back later.`
+                  : "No matches available right now. Try changing your filters or check back later."
+                }
+              </p>
             </div>
-            <h3 className="text-xl font-semibold text-white mb-2">No matches found</h3>
-            <p className="text-sm text-white/30 max-w-xs">Try changing your sport or date filters to see more events.</p>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* ============================================================ */}
       {/*  POP-UP STREAM SELECTOR                                       */}
@@ -508,6 +432,90 @@ export function LiveSports() {
       )}
     </div>
   );
+}
+
+/* ================================================================== */
+/*  CATEGORY SECTIONS                                                  */
+/* ================================================================== */
+
+interface CategorySection {
+  id: string;
+  title: string;
+  icon: React.ReactNode;
+  description?: string;
+  filter: (m: SportMatch[]) => SportMatch[];
+}
+
+function buildCategories(allMatches: SportMatch[]): CategorySection[] {
+  const liveMatches = (m: SportMatch[]) => m.filter((x) => x.status === "live");
+
+  // Pick the best featured match: prefer live Football, then any live, then any
+  const pickFeatured = (matches: SportMatch[]): SportMatch | null => {
+    if (matches.length === 0) return null;
+    // Prefer live football matches (big leagues)
+    const liveFootball = matches.find(
+      (m) => m.status === "live" && m.sport === "Football" && m.league === "UEFA Champions League",
+    );
+    if (liveFootball) return liveFootball;
+    const liveFootballAny = matches.find(
+      (m) => m.status === "live" && m.sport === "Football",
+    );
+    if (liveFootballAny) return liveFootballAny;
+    // Then any live match
+    const anyLive = matches.find((m) => m.status === "live");
+    if (anyLive) return anyLive;
+    // Fallback to first match
+    return matches[0];
+  };
+
+  const featured = pickFeatured(allMatches);
+
+  return [
+    {
+      id: "featured",
+      title: "Featured Match",
+      icon: <Flame size={18} />,
+      description: "The biggest match happening right now",
+      filter: () => (featured ? [featured] : []),
+    },
+    {
+      id: "live-now",
+      title: "Live Now",
+      icon: <Radio size={18} />,
+      description: "All sports currently streaming",
+      filter: liveMatches,
+    },
+    {
+      id: "football",
+      title: "Football",
+      icon: <span className="text-base">\u26BD</span>,
+      filter: (m) => m.filter((x) => x.sport === "Football"),
+    },
+    {
+      id: "basketball",
+      title: "Basketball",
+      icon: <span className="text-base">\uD83C\uDFC0</span>,
+      filter: (m) => m.filter((x) => x.sport === "Basketball"),
+    },
+    {
+      id: "hockey",
+      title: "Hockey",
+      icon: <span className="text-base">\uD83C\uDFD2</span>,
+      filter: (m) => m.filter((x) => x.sport === "Hockey"),
+    },
+    {
+      id: "boxing-ufc",
+      title: "Boxing & UFC",
+      icon: <Swords size={18} />,
+      filter: (m) => m.filter((x) => x.sport === "Fighting"),
+    },
+    {
+      id: "upcoming",
+      title: "Upcoming Events",
+      icon: <Calendar size={18} />,
+      filter: (m) => m.filter((x) => x.status === "scheduled"),
+    },
+  ];
 }
 
 /* ================================================================== */
@@ -552,9 +560,13 @@ function FeaturedHeroCard({ match, onWatch }: { match: SportMatch; onWatch: () =
           {/* Team names + score */}
           <div className="flex items-center gap-4 sm:gap-6 mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center text-white text-sm font-black shadow-xl" style={{ backgroundColor: match.color1 }}>
-                {match.team1.substring(0, 2).toUpperCase()}
-              </div>
+              {match.team1_logo ? (
+                <img src={match.team1_logo} alt={match.team1} className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-contain shadow-xl bg-white/10 p-1.5" />
+              ) : (
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center text-white text-sm font-black shadow-xl" style={{ backgroundColor: match.color1 }}>
+                  {match.team1.substring(0, 2).toUpperCase()}
+                </div>
+              )}
               <span className="text-lg sm:text-2xl font-black text-white">{match.team1}</span>
             </div>
 
@@ -569,14 +581,18 @@ function FeaturedHeroCard({ match, onWatch }: { match: SportMatch; onWatch: () =
 
             <div className="flex items-center gap-3">
               <span className="text-lg sm:text-2xl font-black text-white">{match.team2}</span>
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center text-white text-sm font-black shadow-xl" style={{ backgroundColor: match.color2 }}>
-                {match.team2.substring(0, 2).toUpperCase()}
-              </div>
+              {match.team2_logo ? (
+                <img src={match.team2_logo} alt={match.team2} className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-contain shadow-xl bg-white/10 p-1.5" />
+              ) : (
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center text-white text-sm font-black shadow-xl" style={{ backgroundColor: match.color2 }}>
+                  {match.team2.substring(0, 2).toUpperCase()}
+                </div>
+              )}
             </div>
           </div>
 
           <p className="text-sm text-white/40 max-w-md mb-6">
-            The most anticipated {match.sport.toLowerCase()} event of the year. Don&apos;t miss this thrilling matchup between two world-class competitors.
+            The most anticipated {match.sport.toLowerCase()} event. Don&apos;t miss this thrilling matchup between two world-class competitors.
           </p>
 
           {/* CTA buttons */}
@@ -593,21 +609,10 @@ function FeaturedHeroCard({ match, onWatch }: { match: SportMatch; onWatch: () =
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white text-sm font-semibold transition-all cursor-pointer border border-white/[0.08]"
             >
               <Eye size={16} />
-              {match.viewers ? `${match.viewers} watching` : "Details"}
+              Details
             </button>
           </div>
         </div>
-
-        {/* Right: Viewer count badge */}
-        {match.viewers && (
-          <div className="flex-shrink-0 flex flex-col items-center gap-1">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-              <Eye size={24} className="text-emerald-400 sm:w-7 sm:h-7" />
-            </div>
-            <span className="text-xs font-bold text-emerald-400">{match.viewers}</span>
-            <span className="text-[10px] text-white/30">viewers</span>
-          </div>
-        )}
       </div>
     </motion.div>
   );
@@ -686,14 +691,6 @@ function MatchCard({
             {match.league}
           </span>
         </div>
-
-        {/* Viewer count (live only) */}
-        {isLive && match.viewers && (
-          <div className="absolute bottom-1.5 right-2.5 flex items-center gap-1">
-            <Eye size={9} className="text-white/25" />
-            <span className="text-[9px] font-medium text-white/25">{match.viewers}</span>
-          </div>
-        )}
       </div>
 
       {/* Card body */}
@@ -710,9 +707,13 @@ function MatchCard({
         {/* Teams */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-[10px] sm:text-[11px] font-bold shadow-md" style={{ backgroundColor: match.color1 }}>
-              {match.team1.substring(0, 2).toUpperCase()}
-            </div>
+            {match.team1_logo ? (
+              <img src={match.team1_logo} alt={match.team1} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-contain flex-shrink-0 bg-white/10 p-0.5 shadow-md" />
+            ) : (
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-[10px] sm:text-[11px] font-bold shadow-md" style={{ backgroundColor: match.color1 }}>
+                {match.team1.substring(0, 2).toUpperCase()}
+              </div>
+            )}
             <span className="text-[11px] sm:text-xs font-semibold text-white truncate flex-1">{match.team1}</span>
             {isLive && match.score && <span className="text-xs font-black text-white/80 tabular-nums">{match.score.split(" - ")[0]}</span>}
           </div>
@@ -728,9 +729,13 @@ function MatchCard({
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-[10px] sm:text-[11px] font-bold shadow-md" style={{ backgroundColor: match.color2 }}>
-              {match.team2.substring(0, 2).toUpperCase()}
-            </div>
+            {match.team2_logo ? (
+              <img src={match.team2_logo} alt={match.team2} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-contain flex-shrink-0 bg-white/10 p-0.5 shadow-md" />
+            ) : (
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-[10px] sm:text-[11px] font-bold shadow-md" style={{ backgroundColor: match.color2 }}>
+                {match.team2.substring(0, 2).toUpperCase()}
+              </div>
+            )}
             <span className="text-[11px] sm:text-xs font-semibold text-white truncate flex-1">{match.team2}</span>
             {isLive && match.score && <span className="text-xs font-black text-white/80 tabular-nums">{match.score.split(" - ")[1]}</span>}
           </div>
@@ -759,10 +764,10 @@ function MatchCard({
                     <span className="text-[10px] font-medium text-white/50">{match.time}</span>
                   )}
                 </div>
-                {match.viewers && (
+                {match.str_status && (
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-white/30 font-medium uppercase tracking-wider">Viewers</span>
-                    <span className="text-[10px] font-medium text-emerald-400">{match.viewers}</span>
+                    <span className="text-[10px] text-white/30 font-medium uppercase tracking-wider">API Status</span>
+                    <span className="text-[10px] font-medium text-white/40">{match.str_status.replace("STATUS_", "").replace(/_/g, " ")}</span>
                   </div>
                 )}
               </div>
