@@ -79,13 +79,8 @@ interface ESPNResponse {
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const DEFAULT_STREAM_URLS: Record<string, string> = {
-  "server-1": "https://www.youtube.com/embed/LXb3EKWsInQ",
-  "server-2": "https://www.youtube.com/embed/tyGDiVc2wyE",
-  "server-3": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
-  "server-4": "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8",
-  "server-5": "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8",
-};
+// No default stream URLs — real sports streams cannot be freely embedded.
+// Users provide their own stream URLs via the custom URL input.
 
 const ESPN_LEAGUES: Array<{
   path: string;
@@ -190,7 +185,7 @@ function transformEvent(event: ESPNEvent, league: string, sport: string): SportM
       league,
       color1: "#555555",
       color2: "#555555",
-      stream_urls: { ...DEFAULT_STREAM_URLS },
+      stream_urls: {},
     };
   }
 
@@ -229,7 +224,7 @@ function transformEvent(event: ESPNEvent, league: string, sport: string): SportM
     league,
     color1: away?.team?.color ? `#${away.team.color}` : "#555555",
     color2: home?.team?.color ? `#${home.team.color}` : "#555555",
-    stream_urls: { ...DEFAULT_STREAM_URLS },
+    stream_urls: {},
     team1_logo: away?.team?.logo || undefined,
     team2_logo: home?.team?.logo || undefined,
     str_status: statusName,

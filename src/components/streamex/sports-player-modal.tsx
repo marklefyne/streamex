@@ -792,19 +792,19 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
                     </AnimatePresence>
                   </>
                 ) : (
-                  /* ── No stream available — placeholder with inline custom URL ── */
+                  /* ── No stream available — custom URL input prompt ── */
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#111]">
-                    <div className="w-20 h-20 rounded-2xl bg-white/[0.03] flex items-center justify-center mb-5 border border-white/[0.06]">
-                      <MonitorPlay size={32} className="text-white/10" />
+                    <div className="w-20 h-20 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-5 border border-emerald-500/20">
+                      <MonitorPlay size={32} className="text-emerald-400/60" />
                     </div>
-                    <p className="text-base font-bold text-white/50 mb-1">No Stream Available</p>
-                    <p className="text-xs text-white/25 mb-1 text-center max-w-[280px]">
-                      This stream source is currently unavailable. Paste a custom stream URL below to watch.
+                    <p className="text-base font-bold text-white/70 mb-1">Paste a Stream URL</p>
+                    <p className="text-xs text-white/35 mb-1 text-center max-w-[320px]">
+                      Find a stream for <span className="text-emerald-400 font-semibold">{match.team1} vs {match.team2}</span> and paste the link below to watch.
                     </p>
                     <div className="flex items-center gap-1.5 mb-5">
-                      <Info size={10} className="text-emerald-400/50" />
-                      <span className="text-[10px] text-emerald-400/50">
-                        Supports YouTube, Twitch, M3U8/HLS (native), and embed URLs
+                      <Info size={10} className="text-emerald-400/60" />
+                      <span className="text-[10px] text-emerald-400/60">
+                        YouTube, Twitch, M3U8/HLS, and embed URLs supported
                       </span>
                     </div>
 
@@ -1024,7 +1024,8 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
               )}
             </AnimatePresence>
 
-            {/* ===== STREAM SERVER SELECTOR ===== */}
+            {/* ===== STREAM SERVER SELECTOR (only when servers are configured) ===== */}
+            {configuredServers.size > 0 && (
             <div className="px-5 sm:px-7 py-4 sport-modal-footer border-t border-emerald-500/10">
               <div className="flex items-center gap-2 mb-3">
                 <MonitorPlay size={14} className="text-emerald-400" />
@@ -1120,6 +1121,7 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
                 </div>
               )}
             </div>
+            )}
           </motion.div>
         </motion.div>
       )}
