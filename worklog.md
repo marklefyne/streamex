@@ -157,3 +157,30 @@ Stage Summary:
 - No more generic category pages — users see the exact game they clicked
 - The Sportsurge watch page has its own built-in player with server selection and quality options
 - Fullscreen already works on all players (verified VideoPlayer, SportsPlayerModal, AnimeDetail)
+---
+Task ID: 1
+Agent: Main Agent
+Task: Replicate sports.gorny.uk's exact streaming servers for live sports
+
+Work Log:
+- Researched sports.gorny.uk website and discovered they use streamed.pk as their backend API
+- Read streamed.pk API documentation at /docs endpoint
+- Tested all API endpoints: /api/sports, /api/matches/{category}, /api/stream/{source}/{id}
+- Identified full data structure: matches with team badges, sources, stream URLs from embedsports.top
+- Created /api/sports/[category]/route.ts - proxy to streamed.pk API with caching
+- Rewrote /api/sports/streams/route.ts - uses streamed.pk stream API
+- Rewrote live-sports.tsx - new component with category tabs (All, Live, Football, Basketball, etc.)
+- Rewrote sports-player-modal.tsx - simplified modal that embeds embedsports.top directly
+- Fixed import issue (default vs named export for LiveSports)
+- Fixed HdBadge icon not found in lucide-react (replaced with text badge)
+- Removed sandbox attribute from iframe to prevent embed blocking
+- Verified all APIs work: football (45 matches), basketball (7 matches), streams endpoint
+- Movie/TV video player already has fullscreen support with allowFullScreen
+
+Stage Summary:
+- Replaced ESPN/Sportsurge API with streamed.pk API (same as sports.gorny.uk)
+- Live sports now uses embedsports.top embed servers directly
+- All sport categories available: football, basketball, baseball, hockey, fight, motor-sports, cricket, tennis, rugby, golf, other
+- Match cards show team badges from streamed.pk, live indicators, stream counts
+- Sports player modal has stream selector tabs, fullscreen support
+- Total matches available: 73+ across all categories
