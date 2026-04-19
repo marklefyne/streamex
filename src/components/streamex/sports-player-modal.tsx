@@ -39,15 +39,15 @@ export interface SportMatch {
 /* ------------------------------------------------------------------ */
 
 const SPORT_SERVERS = [
-  { id: "server-1", name: "Sportsurge", quality: "HD", icon: Zap, desc: "Primary Stream" },
-  { id: "server-2", name: "Sportsurge Alt", quality: "HD", icon: Shield, desc: "Alternative Source" },
-  { id: "server-3", name: "Server 3", quality: "HD", icon: HardDrive, desc: "EU Mirror" },
-  { id: "server-4", name: "Server 4", quality: "HD", icon: MonitorPlay, desc: "SportHD" },
-  { id: "server-5", name: "Server 5", quality: "SD", icon: Play, desc: "Browse Streams" },
+  { id: "server-1", name: "Stream 1", quality: "HD", icon: Zap, desc: "Primary Stream" },
+  { id: "server-2", name: "Stream 2", quality: "HD", icon: Shield, desc: "Alternative" },
+  { id: "server-3", name: "Stream 3", quality: "HD", icon: HardDrive, desc: "Backup" },
+  { id: "server-4", name: "Stream 4", quality: "HD", icon: MonitorPlay, desc: "Extra" },
+  { id: "server-5", name: "Stream 5", quality: "HD", icon: Play, desc: "Additional" },
 ];
 
 const AUTO_CYCLE_DELAY = 10; // seconds before trying next server
-const IFRAME_TIMEOUT = 45000; // 45s for sportsurge watch pages (they load dynamically via JS)
+const IFRAME_TIMEOUT = 25000; // 25s for embedsports.top embeds
 const HLS_TIMEOUT = 20000; // 20s for HLS initialisation (generous for sandbox)
 
 /* ------------------------------------------------------------------ */
@@ -221,22 +221,8 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
 
   const isPlaying = isHls ? hlsReady : iframeLoaded;
 
-  // Detect if the current URL is a Sportsurge DIRECT GAME page (watch/?informations=...)
-  const isDirectGamePage = currentUrl && currentUrl.includes('sportsurge.lol/watch/?informations=');
-  // Detect generic sportsurge category pages
-  const isGenericSportsurgePage = currentUrl && (
-    currentUrl.includes('sportsurge.bz') ||
-    currentUrl.includes('sportsurge.com.de') ||
-    currentUrl.includes('sportsurge.net') ||
-    currentUrl.includes('sportshd.me')
-  );
-  const isSportsurgePage = currentUrl && (
-    currentUrl.includes('sportsurge.lol') ||
-    currentUrl.includes('sportsurge.bz') ||
-    currentUrl.includes('sportsurge.com.de') ||
-    currentUrl.includes('sportsurge.net') ||
-    currentUrl.includes('sportshd.me')
-  );
+  // Detect if the current URL is from embedsports.top (our primary embed provider)
+  const isEmbedsportsPage = currentUrl && currentUrl.includes('embedsports.top');
 
   /* ── Which servers have URLs configured ────────────────────── */
   const configuredServers = new Set(
@@ -360,10 +346,9 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
   useEffect(() => {
     if (!currentUrl || isHls) return;
 
-    // Don't set timeout for direct sportsurge game pages — they load streams
-    // dynamically via JavaScript and may take longer than the timeout.
-    // Also don't timeout for custom URLs since the user explicitly chose them.
-    if (isDirectGamePage || activeCustomUrl) return;
+    // Don't set timeout for embedsports.top pages (they load their own player)
+    // or custom URLs since the user explicitly chose them.
+    if (isEmbedsportsPage || activeCustomUrl) return;
 
     if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
     loadTimeoutRef.current = setTimeout(() => {
@@ -376,7 +361,7 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
     return () => {
       if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
     };
-  }, [currentUrl, isHls, isDirectGamePage, activeCustomUrl]);
+  }, [currentUrl, isHls, isEmbedsportsPage, activeCustomUrl]);
 
   /* ================================================================ */
   /*  Reset state on match change                                       */
@@ -400,13 +385,13 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
   /* ================================================================ */
 
   const triggerAutoCycle = useCallback(() => {
-    // Don't auto-cycle when using a custom URL or when on a direct game page
-    if (activeCustomUrl || isDirectGamePage) return;
+    // Don't auto-cycle when using a custom URL or when on an embedsports page
+    if (activeCustomUrl || isEmbedsportsPage) return;
 
     setAutoCycling(true);
     setCycleCountdown(AUTO_CYCLE_DELAY);
     setTriedServers((prev) => new Set(prev).add(activeServer));
-  }, [activeServer, activeCustomUrl, isDirectGamePage]);
+  }, [activeServer, activeCustomUrl, isEmbedsportsPage]);
 
   // Keep the ref in sync
   useEffect(() => {
@@ -766,46 +751,14 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
                       />
                     )}
 
-                    {/* Direct game page loaded indicator */}
-                    {isPlaying && isDirectGamePage && !isHls && (
+                    {/* Stream loaded indicator for embedsports.top */}
+                    {isPlaying && isEmbedsportsPage && !isHls && (
                       <div className="absolute top-3 left-3 z-10">
                         <div className="px-3 py-1.5 rounded-lg bg-emerald-500/90 backdrop-blur-sm">
                           <span className="text-[10px] font-bold text-white flex items-center gap-1.5">
                             <Play size={10} fill="white" />
-                            Game Player Loaded — Select a server on the page to start watching
+                            Stream Loaded
                           </span>
-                        </div>
-                      </div>
-                    )}
-                    {/* Generic sportsurge page helper overlay (for category pages, not direct game pages) */}
-                    {isPlaying && isGenericSportsurgePage && !isHls && (
-                      <div className="absolute bottom-3 left-3 right-3 z-10">
-                        <div className="px-4 py-2.5 rounded-xl bg-amber-500/10 backdrop-blur-md border border-amber-500/20 flex items-center gap-3">
-                          <Info size={14} className="text-amber-400 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[11px] font-bold text-amber-300">
-                              Find your game and click a stream to watch
-                            </p>
-                            <p className="text-[9px] text-amber-200/50">
-                              Or try Server 1 for a direct game link
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => {
-                              if (currentUrl) window.open(currentUrl, '_blank');
-                            }}
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[10px] font-bold transition-all cursor-pointer border border-amber-500/20 flex-shrink-0"
-                          >
-                            <ExternalLink size={10} />
-                            Open
-                          </button>
-                          <button
-                            onClick={handleNextStream}
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[10px] font-bold transition-all cursor-pointer border border-emerald-500/20 flex-shrink-0"
-                          >
-                            <SkipForward size={10} />
-                            Next Server
-                          </button>
                         </div>
                       </div>
                     )}

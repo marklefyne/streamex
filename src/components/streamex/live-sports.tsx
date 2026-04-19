@@ -67,20 +67,20 @@ export function LiveSports() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastFetched, setLastFetched] = useState<string | null>(null);
 
-  // Fetch real data from ESPN API
+  // Fetch real data from streamed.pk API (same as sports.gorny.uk)
   const fetchMatches = useCallback(async (showRefreshing = false) => {
     if (showRefreshing) setIsRefreshing(true);
     else setIsLoading(true);
     setFetchError(null);
 
     try {
-      const res = await fetch("/api/sports/espn");
+      const res = await fetch("/api/sports/all-today");
       if (!res.ok) throw new Error(`API returned ${res.status}`);
 
       const data = await res.json();
       const fetchedMatches: SportMatch[] = data.matches || [];
       setMatches(fetchedMatches);
-      setLastFetched(data.fetched_at || new Date().toISOString());
+      setLastFetched(new Date().toISOString());
     } catch (err) {
       console.error("[LiveSports] Failed to fetch matches:", err);
       setFetchError("Failed to load live sports data. Please try again.");
@@ -95,7 +95,7 @@ export function LiveSports() {
     fetchMatches();
   }, [fetchMatches]);
 
-  // Fetch streams from API for a specific match
+  // Fetch streams from streamed.pk API (same as sports.gorny.uk)
   const handleWatchMatch = useCallback(async (match: SportMatch) => {
     // Check cache first
     const cached = matchStreams.get(match.id);
@@ -107,23 +107,24 @@ export function LiveSports() {
     // Open player immediately with "searching" state
     setSelectedMatch({ ...match, stream_urls: { "searching": "" } });
 
-    // Fetch streams from API in background
+    // Use gorny_sources from the match data if available
+    const sources = (match as SportMatch & { gorny_sources?: { source: string; id: string }[] }).gorny_sources;
+    if (!sources || sources.length === 0) {
+      setSelectedMatch((prev) => prev ? { ...prev, stream_urls: {} } : prev);
+      return;
+    }
+
+    // Fetch streams from streamed.pk API
     try {
-      const params = new URLSearchParams({
-        match_id: String(match.id),
-        sport: match.sport,
-        team1: match.team1,
-        team2: match.team2,
-        league: match.league,
-      });
-      const res = await fetch(`/api/sports/streams?${params}`);
+      const { source, id } = sources[0];
+      const res = await fetch(`/api/sports/streams?source=${encodeURIComponent(source)}&id=${encodeURIComponent(id)}`);
       if (res.ok) {
         const data = await res.json();
         const fetchedStreams: Record<string, string> = {};
         if (data.streams && Array.isArray(data.streams)) {
-          data.streams.forEach((stream: { server: string; url: string }, idx: number) => {
-            const key = stream.server || `server-${idx + 1}`;
-            fetchedStreams[key] = stream.url;
+          data.streams.forEach((stream: { embedUrl: string; streamNo: number; hd: boolean }, idx: number) => {
+            const key = `server-${stream.streamNo || idx + 1}`;
+            fetchedStreams[key] = stream.embedUrl;
           });
         }
 
@@ -139,7 +140,6 @@ export function LiveSports() {
             prev ? { ...prev, stream_urls: { ...prev.stream_urls, ...fetchedStreams } } : prev
           );
         } else {
-          // No streams found - remove the "searching" key so it shows custom URL input
           setSelectedMatch((prev) =>
             prev ? { ...prev, stream_urls: {} } : prev
           );
@@ -318,7 +318,7 @@ export function LiveSports() {
             </div>
             <h3 className="text-lg font-semibold text-white mb-2">Loading Live Sports</h3>
             <p className="text-sm text-white/30 max-w-xs text-center">
-              Fetching real-time match data from ESPN…
+              Fetching live match data…
             </p>
           </div>
           {/* Skeleton grid */}

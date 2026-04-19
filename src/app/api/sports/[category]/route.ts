@@ -1,24 +1,59 @@
 import { NextResponse } from "next/server";
 
 /**
- * Sports Matches API — proxy to streamed.pk
+ * Sports Matches API — proxy to streamed.pk (same as sports.gorny.uk)
  *
- * GET /api/sports/football     → football matches
- * GET /api/sports/basketball   → basketball matches
- * GET /api/sports/baseball     → baseball matches
- * GET /api/sports/hockey       → hockey matches
- * GET /api/sports/motor-sports → motor sports matches
- * GET /api/sports/fight        → UFC/Boxing matches
- * GET /api/sports/tennis       → tennis matches
- * GET /api/sports/cricket      → cricket matches
- * GET /api/sports/rugby        → rugby matches
- * GET /api/sports/other        → other sports
+ * Returns match data transformed to our SportMatch interface
+ * so the original UI design works without changes.
  */
 
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
+
+interface SportMatch {
+  id: number;
+  team1: string;
+  team2: string;
+  sport: string;
+  status: "live" | "scheduled";
+  time: string;
+  score?: string;
+  league: string;
+  color1: string;
+  color2: string;
+  viewers?: string;
+  stream_urls?: Record<string, string>;
+  team1_logo?: string;
+  team2_logo?: string;
+  str_status?: string;
+  // Extra fields for streamed.pk sources
+  gorny_sources?: { source: string; id: string }[];
+}
+
+interface StreamedPKMatch {
+  id: string;
+  title: string;
+  category: string;
+  date: number;
+  poster: string | null;
+  popular: boolean;
+  teams: {
+    home: { name: string; badge: string };
+    away: { name: string; badge: string };
+  };
+  sources: { source: string; id: string }[];
+}
+
+/* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
+
 const CACHE_TTL = 120_000; // 2 minutes
-const matchesCache = new Map<string, { data: any[]; timestamp: number }>();
+const matchesCache = new Map<string, { data: SportMatch[]; timestamp: number }>();
 
 const VALID_CATEGORIES = [
+  "all-today",
   "football",
   "basketball",
   "baseball",
@@ -26,9 +61,9 @@ const VALID_CATEGORIES = [
   "motor-sports",
   "fight",
   "tennis",
+  "cricket",
   "rugby",
   "golf",
-  "cricket",
   "other",
   "american-football",
   "billiards",
@@ -36,6 +71,114 @@ const VALID_CATEGORIES = [
   "darts",
   "all",
 ];
+
+const CATEGORY_LABELS: Record<string, string> = {
+  football: "Football",
+  basketball: "Basketball",
+  baseball: "Baseball",
+  hockey: "Hockey",
+  "motor-sports": "Motor Sports",
+  fight: "Boxing & UFC",
+  tennis: "Tennis",
+  cricket: "Cricket",
+  rugby: "Rugby",
+  golf: "Golf",
+  other: "Other",
+  "american-football": "American Football",
+  billiards: "Billiards",
+  afl: "AFL",
+  darts: "Darts",
+};
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Determine if a match is live based on date proximity.
+ */
+function isLiveMatch(date: number): boolean {
+  const now = Date.now();
+  const matchDate = new Date(date);
+  const diffMs = Math.abs(now - date);
+  // Consider live if within 2 hours of the scheduled time
+  return diffMs < 2 * 60 * 60 * 1000;
+}
+
+/**
+ * Format date into readable time string.
+ */
+function formatMatchTime(date: number): string {
+  const matchDate = new Date(date);
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  if (matchDate.toDateString() === now.toDateString()) {
+    return `Today ${matchDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}`;
+  }
+  if (matchDate.toDateString() === tomorrow.toDateString()) {
+    return `Tomorrow ${matchDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}`;
+  }
+  if (matchDate < now) {
+    return "FT";
+  }
+  return matchDate.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+/**
+ * Generate a consistent color from a team name.
+ */
+function teamColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const colors = [
+    "#1e3a5f", "#5f1e3a", "#3a5f1e", "#5f3a1e", "#1e5f3a",
+    "#3a1e5f", "#5f5f1e", "#1e5f5f", "#5f1e5f", "#3a3a3a",
+  ];
+  return colors[Math.abs(hash) % colors.length];
+}
+
+/**
+ * Transform a streamed.pk match to our SportMatch interface.
+ */
+function transformMatch(match: StreamedPKMatch, index: number): SportMatch {
+  const live = isLiveMatch(match.date);
+  const time = live ? "Live" : formatMatchTime(match.date);
+
+  return {
+    id: index + 1, // numeric ID for our UI
+    team1: match.teams?.away?.name || match.title?.split(" vs ")[0] || "TBD",
+    team2: match.teams?.home?.name || match.title?.split(" vs ")[1] || "TBD",
+    sport: CATEGORY_LABELS[match.category] || match.category || "Sports",
+    status: live ? "live" : "scheduled",
+    time,
+    league: CATEGORY_LABELS[match.category] || match.category || "Sports",
+    color1: teamColor(match.teams?.away?.name || ""),
+    color2: teamColor(match.teams?.home?.name || ""),
+    stream_urls: {},
+    team1_logo: match.teams?.away?.badge
+      ? `https://streamed.pk/api/images/badge/${match.teams.away.badge}.webp`
+      : undefined,
+    team2_logo: match.teams?.home?.badge
+      ? `https://streamed.pk/api/images/badge/${match.teams.home.badge}.webp`
+      : undefined,
+    gorny_sources: match.sources || [],
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/*  GET Handler                                                        */
+/* ------------------------------------------------------------------ */
 
 export async function GET(
   request: Request,
@@ -96,38 +239,9 @@ export async function GET(
     }
 
     const matches = await res.json();
-
-    // Process matches — add computed fields
-    const now = Date.now();
-    const processed = (Array.isArray(matches) ? matches : []).map((m: any) => {
-      const isLive = m.date && Math.abs(m.date - now) < 7200000; // within 2 hours
-      return {
-        ...m,
-        isLive,
-        homeTeam: m.teams?.home?.name || "",
-        awayTeam: m.teams?.away?.name || "",
-        homeBadge: m.teams?.home?.badge
-          ? `https://streamed.pk/api/images/badge/${m.teams.home.badge}.webp`
-          : null,
-        awayBadge: m.teams?.away?.badge
-          ? `https://streamed.pk/api/images/badge/${m.teams.away.badge}.webp`
-          : null,
-        poster: m.poster
-          ? `https://streamed.pk${m.poster}`
-          : null,
-        matchTime: m.date ? new Date(m.date).toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        }) : "",
-        matchDate: m.date ? new Date(m.date).toLocaleDateString("en-US", {
-          weekday: "short",
-          month: "short",
-          day: "numeric",
-        }) : "",
-        streamCount: m.sources?.length || 0,
-      };
-    });
+    const processed: SportMatch[] = (Array.isArray(matches) ? matches : []).map(
+      (m: StreamedPKMatch, i: number) => transformMatch(m, i)
+    );
 
     // Update cache
     matchesCache.set(category, { data: processed, timestamp: Date.now() });

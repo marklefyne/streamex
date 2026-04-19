@@ -208,3 +208,27 @@ Stage Summary:
 - Fullscreen support working in sports player modal
 - Custom URL input available as fallback
 - All APIs verified: /api/sports/espn (28 matches), /api/sports/streams (4 servers per match)
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Integrate sports.gorny.uk servers (streamed.pk) into original live sports design
+
+Work Log:
+- Analyzed sports.gorny.uk JS bundle — discovered they use streamed.pk as their backend API
+- Found 3 API endpoints: /api/matches/{category}, /api/stream/{source}/{id}, /api/images/badge/{id}.webp
+- Streams come from embedsports.top (direct embed URLs that work in iframes)
+- Rewrote /api/sports/[category]/route.ts: proxies to streamed.pk, transforms response to SportMatch format (with gorny_sources field)
+- Rewrote /api/sports/streams/route.ts: proxies to streamed.pk /api/stream/{source}/{id}, returns embedsports.top URLs
+- Updated live-sports.tsx: changed fetchMatches to use /api/sports/all-today, changed handleWatchMatch to use gorny_sources from match data
+- Updated sports-player-modal.tsx: renamed servers to Stream 1-5, reduced iframe timeout to 25s, replaced Sportsurge detection with embedsports.top detection, removed Sportsurge-specific overlay
+- Verified: 119 matches (28 live), streams API returns embedsports.top embed URLs with viewer counts
+- Clean lint pass
+
+Stage Summary:
+- Original design preserved: Featured hero, Live Now, category sections, match cards with team badges
+- Servers now from sports.gorny.uk: embedsports.top direct embeds (same as sports.gorny.uk uses)
+- Data from streamed.pk API (same backend as sports.gorny.uk)
+- Multiple stream sources per match (admin, echo, delta, etc.)
+- Fullscreen support still works
+- Custom URL input still available as fallback
