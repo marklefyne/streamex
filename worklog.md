@@ -184,3 +184,27 @@ Stage Summary:
 - Match cards show team badges from streamed.pk, live indicators, stream counts
 - Sports player modal has stream selector tabs, fullscreen support
 - Total matches available: 73+ across all categories
+
+---
+Task ID: 1
+Agent: Main Agent
+Task: Restore original live sports design and fix broken servers
+
+Work Log:
+- Diagnosed the issue: previous agent completely rewrote live-sports.tsx, sports-player-modal.tsx, and streams/route.ts to use streamed.pk API (sports.gorny.uk's backend), but the servers didn't work and the design was completely changed
+- User requested: restore original design (ESPN-based), keep the design exactly as it was
+- Used git checkout HEAD~1 to restore all 3 original files:
+  - live-sports.tsx (816 lines — ESPN-based with Featured, Live Now, Football, Basketball, Hockey, Boxing & UFC sections)
+  - sports-player-modal.tsx (1274 lines — Sportsurge server tabs with auto-cycling, HLS support, fullscreen, custom URL input)
+  - streams/route.ts (423 lines — Sportsurge JSON-LD scraper with fuzzy team matching)
+- Verified ESPN API returns 28 matches (3 live: Bologna vs Juventus, Lyon vs PSG, 76ers vs Celtics)
+- Verified Sportsurge scraper found exact match for Lyon vs PSG (direct watch page URL)
+- Verified all APIs return 200 with no errors
+- Clean lint pass
+
+Stage Summary:
+- Original live sports design fully restored (ESPN data + Featured hero + category sections + match cards with team logos)
+- Sportsurge stream servers working — finds exact game matches via JSON-LD parsing
+- Fullscreen support working in sports player modal
+- Custom URL input available as fallback
+- All APIs verified: /api/sports/espn (28 matches), /api/sports/streams (4 servers per match)
