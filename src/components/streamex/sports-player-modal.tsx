@@ -40,9 +40,9 @@ const SPORT_SERVERS = [
   { id: "server-5", name: "Server 5", quality: "SD", icon: Play, desc: "Last resort" },
 ];
 
-const AUTO_CYCLE_DELAY = 5; // seconds before trying next server
-const IFRAME_TIMEOUT = 10000; // 10s for iframe load
-const HLS_TIMEOUT = 8000; // 8s for HLS initialisation
+const AUTO_CYCLE_DELAY = 8; // seconds before trying next server
+const IFRAME_TIMEOUT = 15000; // 15s for iframe load
+const HLS_TIMEOUT = 20000; // 20s for HLS initialisation (generous for sandbox)
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -254,12 +254,16 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
       hls.loadSource(currentUrl);
       hls.attachMedia(video);
 
+      // Mark ready on MANIFEST_PARSED — the stream is valid once the manifest loads
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        setHlsReady(true);
+        if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
         video.play().catch(() => {
           // Autoplay blocked — user must interact
         });
       });
 
+      // Also mark ready on first fragment loaded as fallback
       hls.on(Hls.Events.FRAG_LOADED, () => {
         setHlsReady(true);
         if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);

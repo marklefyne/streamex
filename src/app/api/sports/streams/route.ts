@@ -21,11 +21,11 @@ interface StreamSource {
  * 5 always-available HLS test streams (public, reliable, no auth needed).
  */
 const FALLBACK_HLS_STREAMS: StreamSource[] = [
-  { server: "server-1", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", type: "hls", quality: "HD" },
-  { server: "server-2", url: "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8", type: "hls", quality: "HD" },
-  { server: "server-3", url: "https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8", type: "hls", quality: "SD" },
-  { server: "server-4", url: "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8", type: "hls", quality: "HD" },
-  { server: "server-5", url: "https://storage.googleapis.com/shaka-demo-assets/angel-one.m3u8", type: "hls", quality: "SD" },
+  { server: "server-1", url: "https://www.youtube.com/embed/LXb3EKWsInQ", type: "iframe", quality: "HD" },
+  { server: "server-2", url: "https://www.youtube.com/embed/tyGDiVc2wyE", type: "iframe", quality: "HD" },
+  { server: "server-3", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", type: "hls", quality: "HD" },
+  { server: "server-4", url: "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8", type: "hls", quality: "HD" },
+  { server: "server-5", url: "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8", type: "hls", quality: "SD" },
 ];
 
 /**
