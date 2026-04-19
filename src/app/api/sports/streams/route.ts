@@ -1,73 +1,212 @@
 import { NextResponse } from "next/server";
-import ZAI from "z-ai-web-dev-sdk";
 
 /**
  * Sports Streams API
  *
- * Uses web search to find live stream links for sports matches.
- * Searches YouTube and other sources for "[team1] vs [team2] live stream"
- * and returns embed-compatible URLs.
+ * Scrapes real sports streaming sites (sportsurge.lol, etc.) to find
+ * matching events and returns their embed URLs as stream servers.
+ * No YouTube — only real sports streaming sources.
  */
 
 interface StreamSource {
   server: string;
   url: string;
-  type: "hls" | "iframe" | "mp4";
+  type: "iframe" | "hls";
   quality: string;
   title?: string;
 }
 
-// In-memory cache for stream searches
-const streamCache = new Map<
-  string,
-  { data: StreamSource[]; timestamp: number }
->();
+/* ------------------------------------------------------------------ */
+/*  Cache                                                              */
+/* ------------------------------------------------------------------ */
+
+const streamCache = new Map<string, { data: StreamSource[]; timestamp: number }>();
 const CACHE_TTL = 180_000; // 3 minutes
 
+interface SportsurgeEvent {
+  url: string;
+  team1: string;
+  team2: string;
+  sport: string;
+}
+
+let homepageCache: { events: SportsurgeEvent[]; timestamp: number } | null = null;
+const HOMEPAGE_CACHE_TTL = 300_000; // 5 minutes
+
+/* ------------------------------------------------------------------ */
+/*  Sportsurge scraper                                                 */
+/* ------------------------------------------------------------------ */
+
 /**
- * Extract YouTube video ID from various YouTube URL formats
+ * Scrape sportsurge.lol homepage to get all current event URLs.
+ * The page lists events like:
+ *   https://sportsurge.lol/watch/?informations=boston-celtics-vs-philadelphia-76ers-30768ffc
  */
-function extractYouTubeId(url: string): string | null {
-  // youtube.com/watch?v=...
-  const watchMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
-  if (watchMatch) return watchMatch[1];
+async function scrapeSportsurgeEvents(): Promise<SportsurgeEvent[]> {
+  // Check cache
+  if (homepageCache && Date.now() - homepageCache.timestamp < HOMEPAGE_CACHE_TTL) {
+    return homepageCache.events;
+  }
 
-  // youtu.be/...
-  const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
-  if (shortMatch) return shortMatch[1];
+  try {
+    const res = await fetch("https://sportsurge.lol", {
+      next: { revalidate: 300 },
+      signal: AbortSignal.timeout(10000),
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+    });
 
-  // youtube.com/embed/...
-  const embedMatch = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/);
-  if (embedMatch) return embedMatch[1];
+    if (!res.ok) return [];
 
-  // youtube.com/live/...
-  const liveMatch = url.match(/youtube\.com\/live\/([a-zA-Z0-9_-]{11})/);
-  if (liveMatch) return liveMatch[1];
+    const html = await res.text();
 
-  // youtube.com/shorts/...
-  const shortsMatch = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
-  if (shortsMatch) return shortsMatch[1];
+    // Extract all watch URLs with their text content (team names)
+    const events: SportsurgeEvent[] = [];
+    const urlRegex = /href="(https:\/\/sportsurge\.lol\/watch\/\?informations=[^"]+)"/g;
+    let match;
 
-  return null;
+    while ((match = urlRegex.exec(html)) !== null) {
+      const url = match[1];
+
+      // Extract team names from the slug
+      // Format: .../informations/team1-vs-team2-HASH
+      const info = url.match(/informations=(.+)/);
+      if (!info) continue;
+
+      const slug = info[1];
+      // Remove the trailing 8-char hex hash
+      const slugWithoutHash = slug.replace(/-[a-f0-9]{8}$/, "");
+      const parts = slugWithoutHash.split("-vs-");
+
+      if (parts.length === 2) {
+        const team1 = parts[0].replace(/-/g, " ").trim();
+        const team2 = parts[1].replace(/-/g, " ").trim();
+
+        // Skip very short or generic names
+        if (team1.length > 2 && team2.length > 2) {
+          events.push({ url, team1, team2, sport: "unknown" });
+        }
+      }
+    }
+
+    homepageCache = { events, timestamp: Date.now() };
+    console.log(`[Sportsurge] Scraped ${events.length} events`);
+    return events;
+  } catch (err) {
+    console.error("[Sportsurge] Failed to scrape:", err);
+    return homepageCache?.events || [];
+  }
 }
 
 /**
- * Build a search query for finding live streams of a match
+ * Fuzzy match team names. Handles abbreviations, common variations.
  */
-function buildSearchQuery(
+function teamsMatch(a: string, b: string): boolean {
+  const normalize = (s: string) =>
+    s.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
+
+  const na = normalize(a);
+  const nb = normalize(b);
+
+  if (na === nb) return true;
+  if (na.includes(nb) || nb.includes(na)) return true;
+
+  // Check abbreviations (first 3+ chars)
+  if (na.length >= 3 && nb.length >= 3) {
+    if (na.startsWith(nb.substring(0, 4)) || nb.startsWith(na.substring(0, 4))) return true;
+  }
+
+  return false;
+}
+
+/**
+ * Find matching events on sportsurge for a given match.
+ */
+async function findMatchingEvents(
+  team1: string,
+  team2: string,
+): Promise<SportsurgeEvent[]> {
+  const events = await scrapeSportsurgeEvents();
+  const matches: SportsurgeEvent[] = [];
+
+  for (const event of events) {
+    const t1Match =
+      teamsMatch(team1, event.team1) || teamsMatch(team1, event.team2);
+    const t2Match =
+      teamsMatch(team2, event.team1) || teamsMatch(team2, event.team2);
+
+    if (t1Match && t2Match) {
+      matches.push(event);
+    }
+  }
+
+  return matches;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Alternative sports streaming sites                                  */
+/* ------------------------------------------------------------------ */
+
+function getAlternativeServers(
   team1: string,
   team2: string,
   sport: string,
-  league: string
-): string {
-  // Build a targeted search query
-  const cleanTeam1 = team1.split(" ").slice(0, 2).join(" ");
-  const cleanTeam2 = team2.split(" ").slice(0, 2).join(" ");
-  const cleanLeague = league.split(" ").slice(-2).join(" ");
+): StreamSource[] {
+  const servers: StreamSource[] = [];
+  const slug = `${team1.replace(/\s+/g, "-").toLowerCase()}-vs-${team2.replace(/\s+/g, "-").toLowerCase()}`;
 
-  // Try multiple search strategies
-  return `${cleanTeam1} vs ${cleanTeam2} ${cleanLeague} live stream site:youtube.com`;
+  // Sport category mapping
+  const sportCategory: Record<string, string> = {
+    Football: "soccer",
+    Basketball: "nba",
+    Hockey: "nhl",
+    Fighting: "mma",
+  };
+  const category = sportCategory[sport] || "soccer";
+
+  // Server 2: sportsurge.bz alternative domain
+  servers.push({
+    server: "server-2",
+    url: `https://sportsurge.bz/${category}-streams/`,
+    type: "iframe",
+    quality: "HD",
+    title: `Sportsurge (Alt) - ${team1} vs ${team2}`,
+  });
+
+  // Server 3: sportsurge.com.de another domain
+  servers.push({
+    server: "server-3",
+    url: `https://sportsurge.com.de/${category}-streams/`,
+    type: "iframe",
+    quality: "HD",
+    title: `Sportsurge (DE) - ${team1} vs ${team2}`,
+  });
+
+  // Server 4: sportshd alternative
+  servers.push({
+    server: "server-4",
+    url: `https://sportshd.me/${category === "soccer" ? "football" : category}/`,
+    type: "iframe",
+    quality: "HD",
+    title: `SportHD - ${team1} vs ${team2}`,
+  });
+
+  // Server 5: sportsurge.lol category page
+  servers.push({
+    server: "server-5",
+    url: `https://sportsurge.lol/${category}-streams/`,
+    type: "iframe",
+    quality: "HD",
+    title: `Sportsurge Browse - ${sport}`,
+  });
+
+  return servers;
 }
+
+/* ------------------------------------------------------------------ */
+/*  GET Handler                                                        */
+/* ------------------------------------------------------------------ */
 
 export async function GET(request: Request) {
   try {
@@ -84,13 +223,13 @@ export async function GET(request: Request) {
         team1,
         team2,
         streams: [] as StreamSource[],
-        message: "Missing team information for stream search.",
+        message: "Missing team information.",
         updated_at: new Date().toISOString(),
       });
     }
 
     // Check cache
-    const cacheKey = `${team1}-${team2}-${league}`.toLowerCase();
+    const cacheKey = `${team1}|${team2}|${league}`.toLowerCase();
     const cached = streamCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       return NextResponse.json({
@@ -98,126 +237,60 @@ export async function GET(request: Request) {
         sport,
         team1,
         team2,
+        league,
         streams: cached.data,
         cached: true,
         updated_at: new Date(cached.timestamp).toISOString(),
       });
     }
 
-    // Search for live streams using web search
-    const query = buildSearchQuery(team1, team2, sport, league);
-    console.log(`[Sports Streams] Searching: "${query}"`);
-
-    let zai;
-    try {
-      zai = await ZAI.create();
-    } catch (sdkErr) {
-      console.error("[Sports Streams] Failed to init ZAI SDK:", sdkErr);
-      return NextResponse.json({
-        match_id: searchParams.get("match_id"),
-        sport,
-        team1,
-        team2,
-        streams: [] as StreamSource[],
-        message: "Stream search service unavailable.",
-        updated_at: new Date().toISOString(),
-      });
-    }
-
-    // Primary search: YouTube streams
-    let searchResults: Array<{ url: string; name: string; snippet: string }> = [];
-    try {
-      searchResults = (await zai.functions.invoke("web_search", {
-        query,
-        num: 8,
-      })) || [];
-    } catch (searchErr) {
-      console.error("[Sports Streams] Web search failed:", searchErr);
-    }
-
-    // If no YouTube-specific results, try broader search
-    if (searchResults.length < 2) {
-      const broadQuery = `${team1} vs ${team2} ${sport} live stream`;
-      try {
-        const broadResults = (await zai.functions.invoke("web_search", {
-          query: broadQuery,
-          num: 8,
-        })) || [];
-        searchResults = [...searchResults, ...broadResults];
-      } catch {
-        // ignore
-      }
-    }
-
-    // Process results into stream sources
     const streams: StreamSource[] = [];
-    const seenIds = new Set<string>();
 
-    for (const result of searchResults) {
-      const url = result.url;
-      const title = result.name || "";
+    // Primary: Find exact match on sportsurge.lol
+    try {
+      const matchingEvents = await findMatchingEvents(team1, team2);
 
-      // Extract YouTube video ID
-      const ytId = extractYouTubeId(url);
-      if (ytId && !seenIds.has(ytId)) {
-        seenIds.add(ytId);
-
-        // Skip very short/unlikely matches
-        if (ytId.length < 5) continue;
-
-        // Check if title or snippet suggests it's a stream (not just news)
-        const isLikelyStream =
-          /live|stream|watch|highlights|full|extended|replay|goal|match/i.test(
-            title + " " + (result.snippet || "")
-          );
-
+      if (matchingEvents.length > 0) {
+        // Use the first matching event URL as Server 1
         streams.push({
-          server: `server-${streams.length + 1}`,
-          url: `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1`,
+          server: "server-1",
+          url: matchingEvents[0].url,
           type: "iframe",
           quality: "HD",
-          title: title,
+          title: `Sportsurge - ${matchingEvents[0].team1} vs ${matchingEvents[0].team2}`,
         });
 
-        // If it's likely a stream, also add it with autoplay
-        if (isLikelyStream && streams.length <= 5) {
-          continue;
-        }
-      }
-
-      // Also handle direct embed URLs (dailymotion, twitch, etc.)
-      if (url.includes("dailymotion.com/video/")) {
-        const vid = url.split("dailymotion.com/video/")[1]?.split("_")[0];
-        if (vid && !seenIds.has(vid)) {
-          seenIds.add(vid);
+        // If there are multiple matches (e.g., different streams), add them too
+        for (let i = 1; i < Math.min(matchingEvents.length, 3); i++) {
           streams.push({
-            server: `server-${streams.length + 1}`,
-            url: `https://www.dailymotion.com/embed/video/${vid}?autoplay=1`,
+            server: `server-${i + 1}`,
+            url: matchingEvents[i].url,
             type: "iframe",
             quality: "HD",
-            title: title,
+            title: `Sportsurge Stream ${i + 1} - ${matchingEvents[i].team1} vs ${matchingEvents[i].team2}`,
           });
         }
       }
 
-      // Limit to 5 streams
-      if (streams.length >= 5) break;
+      console.log(
+        `[Sports Streams] Found ${matchingEvents.length} events for ${team1} vs ${team2}`
+      );
+    } catch (err) {
+      console.error("[Sports Streams] Sportsurge scrape failed:", err);
     }
 
-    // If we found streams, sort them (put "live stream" results first)
+    // Add alternative servers (category pages from other streaming sites)
+    const altServers = getAlternativeServers(team1, team2, sport);
+    for (const alt of altServers) {
+      // Only add if we haven't already used this server slot
+      if (!streams.find((s) => s.server === alt.server)) {
+        streams.push(alt);
+      }
+    }
+
+    // Update cache
     if (streams.length > 0) {
-      streams.sort((a, b) => {
-        const aScore = /live|stream/i.test(a.title || "") ? 0 : 1;
-        const bScore = /live|stream/i.test(b.title || "") ? 0 : 1;
-        return aScore - bScore;
-      });
-
-      // Update cache
       streamCache.set(cacheKey, { data: streams, timestamp: Date.now() });
-
-      console.log(
-        `[Sports Streams] Found ${streams.length} streams for ${team1} vs ${team2}`
-      );
     }
 
     return NextResponse.json({
@@ -234,7 +307,7 @@ export async function GET(request: Request) {
     console.error("[Sports Streams] Error:", error);
     return NextResponse.json({
       streams: [] as StreamSource[],
-      message: "Stream search failed. Try a custom URL.",
+      message: "Stream lookup failed.",
       updated_at: new Date().toISOString(),
     });
   }

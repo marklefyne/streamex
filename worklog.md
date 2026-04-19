@@ -42,3 +42,25 @@ Stage Summary:
 - Player shows searching spinner then auto-plays YouTube streams
 - Custom URL input still available as fallback if no streams found
 - Verified all APIs work: TMDB trending, ESPN sports, Sports streams
+---
+Task ID: 2
+Agent: Main Agent
+Task: Replace YouTube search with real sports streaming servers (Sportsurge)
+
+Work Log:
+- User requested: stop YouTube search, use real sports streaming servers
+- Investigated sportsurge.lol - found it has NO X-Frame-Options (allows iframe embedding)
+- Discovered URL pattern: `sportsurge.lol/watch/?informations={team-slug-vs-team-slug-hash}`
+- Built scraper that fetches sportsurge.lol homepage and extracts all event URLs
+- Implemented fuzzy team name matching to find exact match URLs from sportsurge
+- For matches not on sportsurge, falls back to category pages (nba-streams/, soccer-streams/, etc.)
+- Added 5 server options: Primary Sportsurge match URL + Alt domains + SportHD + Browse
+- Updated player modal: increased iframe timeout to 25s, added sandbox permissions
+- Updated server names to be descriptive (Sportsurge, Sportsurge Alt, EU Mirror, SportHD, Browse)
+
+Stage Summary:
+- Live sports now uses real sports streaming servers from sportsurge.lol (not YouTube)
+- Primary server finds exact match page on sportsurge with working stream embeds
+- Fallback servers provide category pages from alternative domains
+- Iframe properly configured for full-page sportsurge embeds
+- Movies/series content confirmed working with TMDB API key

@@ -39,15 +39,15 @@ export interface SportMatch {
 /* ------------------------------------------------------------------ */
 
 const SPORT_SERVERS = [
-  { id: "server-1", name: "Server 1", quality: "HD", icon: Zap, desc: "Primary — Fastest" },
-  { id: "server-2", name: "Server 2", quality: "HD", icon: Shield, desc: "Backup — Stable" },
-  { id: "server-3", name: "Server 3", quality: "SD", icon: HardDrive, desc: "Low bandwidth" },
-  { id: "server-4", name: "Server 4", quality: "HD", icon: MonitorPlay, desc: "Alternative source" },
-  { id: "server-5", name: "Server 5", quality: "SD", icon: Play, desc: "Last resort" },
+  { id: "server-1", name: "Sportsurge", quality: "HD", icon: Zap, desc: "Primary Stream" },
+  { id: "server-2", name: "Sportsurge Alt", quality: "HD", icon: Shield, desc: "Alternative Source" },
+  { id: "server-3", name: "Server 3", quality: "HD", icon: HardDrive, desc: "EU Mirror" },
+  { id: "server-4", name: "Server 4", quality: "HD", icon: MonitorPlay, desc: "SportHD" },
+  { id: "server-5", name: "Server 5", quality: "SD", icon: Play, desc: "Browse Streams" },
 ];
 
-const AUTO_CYCLE_DELAY = 8; // seconds before trying next server
-const IFRAME_TIMEOUT = 15000; // 15s for iframe load
+const AUTO_CYCLE_DELAY = 10; // seconds before trying next server
+const IFRAME_TIMEOUT = 25000; // 25s for iframe load (sportsurge pages are full web pages)
 const HLS_TIMEOUT = 20000; // 20s for HLS initialisation (generous for sandbox)
 
 /* ------------------------------------------------------------------ */
@@ -671,7 +671,7 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
 
             {/* ===== VIDEO PLAYER ===== */}
             <div className="relative w-full bg-black sport-player-area">
-              <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
+              <div className="relative w-full" style={{ aspectRatio: "16/9", minHeight: "400px" }}>
                 {isSearching ? (
                   /* ── Searching for streams state ── */
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#111]">
@@ -699,14 +699,15 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
                         playsInline
                       />
                     ) : (
-                      /* ── Iframe Player (YouTube, Twitch, etc.) ── */
+                      /* ── Iframe Player (Sportsurge, YouTube, Twitch, etc.) ── */
                       <iframe
                         key={`iframe-${match.id}-${activeServer}-${activeCustomUrl || ""}`}
                         src={currentUrl}
                         className="absolute inset-0 w-full h-full border-0"
-                        allow="autoplay; fullscreen; encrypted-media"
+                        allow="autoplay; fullscreen; encrypted-media; clipboard-write"
                         allowFullScreen
-                        referrerPolicy="origin"
+                        referrerPolicy="no-referrer"
+                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
                         onLoad={handleIframeLoad}
                         title={`${match.team1} vs ${match.team2} — Live Stream`}
                       />
