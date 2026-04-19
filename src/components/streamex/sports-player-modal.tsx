@@ -66,9 +66,10 @@ function isHlsUrl(url: string): boolean {
  */
 function resolveStreamUrl(match: SportMatch, serverId: string): string | null {
   if (match.stream_urls) {
+    // Skip the "searching" placeholder key
     if (match.stream_urls[serverId]) return match.stream_urls[serverId];
     for (const sid of Object.keys(match.stream_urls)) {
-      if (match.stream_urls[sid]) return match.stream_urls[sid];
+      if (sid !== "searching" && match.stream_urls[sid]) return match.stream_urls[sid];
     }
   }
   return null;
@@ -192,10 +193,21 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
   const triggerAutoCycleRef = useRef<() => void>(() => {});
 
   /* ── Derived ───────────────────────────────────────────────── */
+  // Check if we're in "searching for streams" state
+  const isSearching = match?.stream_urls?.["searching"] !== undefined && Object.keys(match?.stream_urls || {}).length <= 1;
+
+  // Get non-searching stream URLs
+  const effectiveStreamUrls: Record<string, string> = {};
+  if (match?.stream_urls) {
+    for (const [key, val] of Object.entries(match.stream_urls)) {
+      if (key !== "searching" && val) effectiveStreamUrls[key] = val;
+    }
+  }
+
   const serverUrl = resolveStreamUrl(match!, activeServer);
   const currentUrl = activeCustomUrl || serverUrl;
   const isHls = currentUrl ? isHlsUrl(currentUrl) : false;
-  const shouldShowCustomInput = showCustomInput || !currentUrl;
+  const shouldShowCustomInput = showCustomInput || (!currentUrl && !isSearching);
 
   const iframeLoadState: "loading" | "loaded" | "timeout" = streamWarning
     ? "timeout"
@@ -209,9 +221,7 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
 
   /* ── Which servers have URLs configured ────────────────────── */
   const configuredServers = new Set(
-    match?.stream_urls
-      ? Object.entries(match.stream_urls).filter(([, v]) => v).map(([k]) => k)
-      : [],
+    Object.entries(effectiveStreamUrls).filter(([, v]) => v).map(([k]) => k),
   );
 
   const serverUrlStatus = SPORT_SERVERS.map((s) => ({
@@ -662,7 +672,21 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
             {/* ===== VIDEO PLAYER ===== */}
             <div className="relative w-full bg-black sport-player-area">
               <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
-                {currentUrl ? (
+                {isSearching ? (
+                  /* ── Searching for streams state ── */
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#111]">
+                    <div className="w-20 h-20 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-5 border border-emerald-500/20">
+                      <div className="w-10 h-10 rounded-full border-2 border-emerald-500/30 border-t-emerald-500 animate-spin" />
+                    </div>
+                    <p className="text-base font-bold text-white/70 mb-1">Searching for Streams</p>
+                    <p className="text-xs text-white/35 mb-1 text-center max-w-[320px]">
+                      Looking for live streams of <span className="text-emerald-400 font-semibold">{match.team1} vs {match.team2}</span>
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-white/20">This may take a few seconds…</span>
+                    </div>
+                  </div>
+                ) : currentUrl ? (
                   <>
                     {/* ── HLS Player (native <video>) ── */}
                     {isHls ? (

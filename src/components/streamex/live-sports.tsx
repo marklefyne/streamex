@@ -97,46 +97,63 @@ export function LiveSports() {
 
   // Fetch streams from API for a specific match
   const handleWatchMatch = useCallback(async (match: SportMatch) => {
-    // If match already has stream URLs, open player immediately
-    const hasStreams = match.stream_urls && Object.values(match.stream_urls).some((v) => v);
-
-    if (!hasStreams) {
-      // Try to fetch streams from API
-      try {
-        const res = await fetch(`/api/sports/streams?match_id=${match.id}&sport=${encodeURIComponent(match.sport)}&team1=${encodeURIComponent(match.team1)}&team2=${encodeURIComponent(match.team2)}`);
-        if (res.ok) {
-          const data = await res.json();
-          const fetchedStreams: Record<string, string> = {};
-          if (data.streams && Array.isArray(data.streams)) {
-            data.streams.forEach((stream: { server: string; url: string }, idx: number) => {
-              const key = stream.server || `server-${idx + 1}`;
-              fetchedStreams[key] = stream.url;
-            });
-          }
-          // If we got streams, update the cache and use them
-          if (Object.keys(fetchedStreams).length > 0) {
-            setMatchStreams((prev) => {
-              const next = new Map(prev);
-              next.set(match.id, fetchedStreams);
-              return next;
-            });
-            // Open player with fetched streams
-            setSelectedMatch({ ...match, stream_urls: { ...match.stream_urls, ...fetchedStreams } });
-            return;
-          }
-        }
-      } catch {
-        // API failed, open with existing data (which will show custom URL input)
-      }
+    // Check cache first
+    const cached = matchStreams.get(match.id);
+    if (cached && Object.keys(cached).length > 0) {
+      setSelectedMatch({ ...match, stream_urls: { ...match.stream_urls, ...cached } });
+      return;
     }
 
-    // Merge cached streams if available
-    const cached = matchStreams.get(match.id);
-    const enrichedMatch = cached
-      ? { ...match, stream_urls: { ...match.stream_urls, ...cached } }
-      : match;
+    // Open player immediately with "searching" state
+    setSelectedMatch({ ...match, stream_urls: { "searching": "" } });
 
-    setSelectedMatch(enrichedMatch);
+    // Fetch streams from API in background
+    try {
+      const params = new URLSearchParams({
+        match_id: String(match.id),
+        sport: match.sport,
+        team1: match.team1,
+        team2: match.team2,
+        league: match.league,
+      });
+      const res = await fetch(`/api/sports/streams?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        const fetchedStreams: Record<string, string> = {};
+        if (data.streams && Array.isArray(data.streams)) {
+          data.streams.forEach((stream: { server: string; url: string }, idx: number) => {
+            const key = stream.server || `server-${idx + 1}`;
+            fetchedStreams[key] = stream.url;
+          });
+        }
+
+        if (Object.keys(fetchedStreams).length > 0) {
+          // Update cache
+          setMatchStreams((prev) => {
+            const next = new Map(prev);
+            next.set(match.id, fetchedStreams);
+            return next;
+          });
+          // Update the selected match with found streams
+          setSelectedMatch((prev) =>
+            prev ? { ...prev, stream_urls: { ...prev.stream_urls, ...fetchedStreams } } : prev
+          );
+        } else {
+          // No streams found - remove the "searching" key so it shows custom URL input
+          setSelectedMatch((prev) =>
+            prev ? { ...prev, stream_urls: {} } : prev
+          );
+        }
+      } else {
+        setSelectedMatch((prev) =>
+          prev ? { ...prev, stream_urls: {} } : prev
+        );
+      }
+    } catch {
+      setSelectedMatch((prev) =>
+        prev ? { ...prev, stream_urls: {} } : prev
+      );
+    }
   }, [matchStreams]);
 
   const liveCount = matches.filter((m) => m.status === "live").length;
