@@ -47,7 +47,7 @@ const SPORT_SERVERS = [
 ];
 
 const AUTO_CYCLE_DELAY = 10; // seconds before trying next server
-const IFRAME_TIMEOUT = 25000; // 25s for iframe load (sportsurge pages are full web pages)
+const IFRAME_TIMEOUT = 45000; // 45s for sportsurge watch pages (they load dynamically via JS)
 const HLS_TIMEOUT = 20000; // 20s for HLS initialisation (generous for sandbox)
 
 /* ------------------------------------------------------------------ */
@@ -221,7 +221,15 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
 
   const isPlaying = isHls ? hlsReady : iframeLoaded;
 
-  // Detect if the current URL is a Sportsurge page (not a direct stream embed)
+  // Detect if the current URL is a Sportsurge DIRECT GAME page (watch/?informations=...)
+  const isDirectGamePage = currentUrl && currentUrl.includes('sportsurge.lol/watch/?informations=');
+  // Detect generic sportsurge category pages
+  const isGenericSportsurgePage = currentUrl && (
+    currentUrl.includes('sportsurge.bz') ||
+    currentUrl.includes('sportsurge.com.de') ||
+    currentUrl.includes('sportsurge.net') ||
+    currentUrl.includes('sportshd.me')
+  );
   const isSportsurgePage = currentUrl && (
     currentUrl.includes('sportsurge.lol') ||
     currentUrl.includes('sportsurge.bz') ||
@@ -352,6 +360,11 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
   useEffect(() => {
     if (!currentUrl || isHls) return;
 
+    // Don't set timeout for direct sportsurge game pages — they load streams
+    // dynamically via JavaScript and may take longer than the timeout.
+    // Also don't timeout for custom URLs since the user explicitly chose them.
+    if (isDirectGamePage || activeCustomUrl) return;
+
     if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
     loadTimeoutRef.current = setTimeout(() => {
       if (!iframeLoaded && !streamWarning) {
@@ -363,7 +376,7 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
     return () => {
       if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
     };
-  }, [currentUrl, isHls]);
+  }, [currentUrl, isHls, isDirectGamePage, activeCustomUrl]);
 
   /* ================================================================ */
   /*  Reset state on match change                                       */
@@ -387,13 +400,13 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
   /* ================================================================ */
 
   const triggerAutoCycle = useCallback(() => {
-    // Don't auto-cycle when using a custom URL
-    if (activeCustomUrl) return;
+    // Don't auto-cycle when using a custom URL or when on a direct game page
+    if (activeCustomUrl || isDirectGamePage) return;
 
     setAutoCycling(true);
     setCycleCountdown(AUTO_CYCLE_DELAY);
     setTriedServers((prev) => new Set(prev).add(activeServer));
-  }, [activeServer, activeCustomUrl]);
+  }, [activeServer, activeCustomUrl, isDirectGamePage]);
 
   // Keep the ref in sync
   useEffect(() => {
@@ -753,17 +766,28 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
                       />
                     )}
 
-                    {/* Sportsurge page helper overlay */}
-                    {isPlaying && isSportsurgePage && !isHls && (
+                    {/* Direct game page loaded indicator */}
+                    {isPlaying && isDirectGamePage && !isHls && (
+                      <div className="absolute top-3 left-3 z-10">
+                        <div className="px-3 py-1.5 rounded-lg bg-emerald-500/90 backdrop-blur-sm">
+                          <span className="text-[10px] font-bold text-white flex items-center gap-1.5">
+                            <Play size={10} fill="white" />
+                            Game Player Loaded — Select a server on the page to start watching
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {/* Generic sportsurge page helper overlay (for category pages, not direct game pages) */}
+                    {isPlaying && isGenericSportsurgePage && !isHls && (
                       <div className="absolute bottom-3 left-3 right-3 z-10">
                         <div className="px-4 py-2.5 rounded-xl bg-amber-500/10 backdrop-blur-md border border-amber-500/20 flex items-center gap-3">
                           <Info size={14} className="text-amber-400 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
                             <p className="text-[11px] font-bold text-amber-300">
-                              Click on a stream link inside the page to watch
+                              Find your game and click a stream to watch
                             </p>
                             <p className="text-[9px] text-amber-200/50">
-                              Or try another server below for a direct stream
+                              Or try Server 1 for a direct game link
                             </p>
                           </div>
                           <button

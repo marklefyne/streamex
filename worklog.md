@@ -127,3 +127,33 @@ Stage Summary:
 - Sports streams API now scrapes Sportsurge watch pages for actual stream embed URLs instead of returning website pages
 - When direct embeds are found, they load directly in the player (much better UX)
 - When only Sportsurge pages are available, helpful overlay guides user to click stream links or try next server
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: Fix live sports — games don't work, just shows random content instead of specific game
+
+Work Log:
+- Diagnosed root cause: sportsurge.lol changed their homepage HTML structure — events are now in JSON-LD structured data (<script type="application/ld+json">) instead of plain href attributes
+- The old regex `href="(https://sportsurge.lol/watch/?informations=[^"]+)"` no longer matched any events
+- API fell back to generic category URLs (e.g. `sportsurge.bz/soccer-streams/`) which don't show specific games
+- Rewrote `/api/sports/streams/route.ts` to parse JSON-LD schema data:
+  - Extracts SportsEvent items from ItemList JSON-LD blocks
+  - Gets team names from homeTeam/awayTeam fields
+  - Parses event URLs directly from the structured data
+  - Improved fuzzy matching with abbreviation support (PSG, Man City, etc.)
+  - Returns direct sportsurge.lol watch page URLs for matched games
+- Updated sports-player-modal.tsx:
+  - Added `isDirectGamePage` detection for sportsurge.lol/watch/?informations= URLs
+  - Added `isGenericSportsurgePage` detection for category pages
+  - Direct game pages: show green "Game Player Loaded" indicator, no misleading amber overlay
+  - Category pages: show amber overlay with "Find your game" guidance
+  - Increased iframe timeout from 25s to 45s for dynamic page loading
+  - Disabled auto-cycling and timeout for direct game pages (they load their own streams)
+- Verified API works: Paris SG vs Lyon, Boston Celtics vs 76ers, Juventus vs Bologna all correctly matched
+
+Stage Summary:
+- Live sports now directly opens the specific game's Sportsurge player page when a game is clicked
+- No more generic category pages — users see the exact game they clicked
+- The Sportsurge watch page has its own built-in player with server selection and quality options
+- Fullscreen already works on all players (verified VideoPlayer, SportsPlayerModal, AnimeDetail)
