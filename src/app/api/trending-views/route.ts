@@ -3,6 +3,8 @@ import { supabase } from "@/lib/supabase";
 
 export async function POST(request: NextRequest) {
   try {
+    if (!supabase) return NextResponse.json({ ok: true }, { status: 200 });
+
     const body = await request.json();
     const { tmdb_id, title, type, posterImage } = body;
 
@@ -50,6 +52,8 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
+    if (!supabase) return NextResponse.json({ items: [] }, { status: 200 });
+
     const { data, error } = await supabase
       .from("content_views")
       .select("*")
