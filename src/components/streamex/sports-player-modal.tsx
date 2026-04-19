@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, MonitorPlay, Zap, Shield, HardDrive, Check, Link, ExternalLink,
-  AlertCircle, Info, RefreshCw, SkipForward, Play,
+  AlertCircle, Info, RefreshCw, SkipForward, Play, Maximize, Minimize,
 } from "lucide-react";
 import Hls from "hls.js";
 
@@ -191,6 +191,8 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
   const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cycleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const triggerAutoCycleRef = useRef<() => void>(() => {});
+  const sportsPlayerContainerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   /* ── Derived ───────────────────────────────────────────────── */
   // Check if we're in "searching for streams" state
@@ -218,6 +220,15 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
       : "loading";
 
   const isPlaying = isHls ? hlsReady : iframeLoaded;
+
+  // Detect if the current URL is a Sportsurge page (not a direct stream embed)
+  const isSportsurgePage = currentUrl && (
+    currentUrl.includes('sportsurge.lol') ||
+    currentUrl.includes('sportsurge.bz') ||
+    currentUrl.includes('sportsurge.com.de') ||
+    currentUrl.includes('sportsurge.net') ||
+    currentUrl.includes('sportshd.me')
+  );
 
   /* ── Which servers have URLs configured ────────────────────── */
   const configuredServers = new Set(
@@ -563,6 +574,23 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
     [onClose],
   );
 
+  /* ── Fullscreen toggle ──────────────────────────────────────── */
+  const toggleFullscreen = useCallback(() => {
+    const container = sportsPlayerContainerRef.current;
+    if (!container) return;
+    if (!document.fullscreenElement) {
+      container.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+
   /* ================================================================ */
   /*  Render                                                          */
   /* ================================================================ */
@@ -660,6 +688,19 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
                 </div>
               </div>
 
+              {/* Fullscreen */}
+              <button
+                onClick={toggleFullscreen}
+                className={`flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-xl transition-all duration-200 flex-shrink-0 cursor-pointer ${
+                  isFullscreen
+                    ? 'bg-streamex-accent/20 text-streamex-accent'
+                    : 'bg-white/[0.06] hover:bg-white/[0.12] text-white/50 hover:text-white'
+                }`}
+                title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+              >
+                {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+              </button>
+
               {/* Close */}
               <button
                 onClick={onClose}
@@ -670,8 +711,8 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
             </div>
 
             {/* ===== VIDEO PLAYER ===== */}
-            <div className="relative w-full bg-black sport-player-area">
-              <div className="relative w-full" style={{ aspectRatio: "16/9", minHeight: "400px" }}>
+            <div ref={sportsPlayerContainerRef} className="relative w-full bg-black sport-player-area" style={isFullscreen ? { width: '100vw', height: '100vh' } : {}}>
+              <div className="relative w-full" style={isFullscreen ? { width: '100%', height: '100%' } : { aspectRatio: "16/9", minHeight: "400px" }}>
                 {isSearching ? (
                   /* ── Searching for streams state ── */
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#111]">
@@ -710,6 +751,39 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
                         onLoad={handleIframeLoad}
                         title={`${match.team1} vs ${match.team2} — Live Stream`}
                       />
+                    )}
+
+                    {/* Sportsurge page helper overlay */}
+                    {isPlaying && isSportsurgePage && !isHls && (
+                      <div className="absolute bottom-3 left-3 right-3 z-10">
+                        <div className="px-4 py-2.5 rounded-xl bg-amber-500/10 backdrop-blur-md border border-amber-500/20 flex items-center gap-3">
+                          <Info size={14} className="text-amber-400 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] font-bold text-amber-300">
+                              Click on a stream link inside the page to watch
+                            </p>
+                            <p className="text-[9px] text-amber-200/50">
+                              Or try another server below for a direct stream
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (currentUrl) window.open(currentUrl, '_blank');
+                            }}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[10px] font-bold transition-all cursor-pointer border border-amber-500/20 flex-shrink-0"
+                          >
+                            <ExternalLink size={10} />
+                            Open
+                          </button>
+                          <button
+                            onClick={handleNextStream}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[10px] font-bold transition-all cursor-pointer border border-emerald-500/20 flex-shrink-0"
+                          >
+                            <SkipForward size={10} />
+                            Next Server
+                          </button>
+                        </div>
+                      </div>
                     )}
 
                     {/* Loading spinner overlay */}
@@ -934,6 +1008,26 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
                     {serverUrlStatus.find((s) => s.id === activeServer)?.desc || "Streaming"}
                     {isHls ? " (HLS)" : ""}
                   </span>
+                </div>
+              )}
+
+              {/* Floating fullscreen controls overlay */}
+              {isFullscreen && (
+                <div className="absolute top-3 right-3 flex items-center gap-2 z-30">
+                  <button
+                    onClick={toggleFullscreen}
+                    className="flex items-center justify-center w-10 h-10 rounded-xl bg-black/60 backdrop-blur-sm border border-white/[0.1] text-white/70 hover:text-white hover:bg-black/80 transition-all cursor-pointer"
+                    title="Exit Fullscreen"
+                  >
+                    <Minimize size={18} />
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-500/20 backdrop-blur-sm border border-red-500/20 text-red-400 hover:text-white hover:bg-red-500/40 transition-all cursor-pointer"
+                    title="Close"
+                  >
+                    <X size={18} />
+                  </button>
                 </div>
               )}
             </div>

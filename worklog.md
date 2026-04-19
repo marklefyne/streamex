@@ -99,3 +99,31 @@ Work Log:
 Stage Summary:
 - All pages are working correctly — the issue was likely stale cache from when TMDB API key was missing
 - User should hard-refresh (Ctrl+Shift+R) to see the updated content
+---
+Task ID: 5
+Agent: Main Agent
+Task: Fix fullscreen on all video players + Fix live sports direct stream embedding
+
+Work Log:
+- Analyzed fullscreen implementation in VideoPlayer and SportsPlayerModal
+- Both already had fullscreen buttons using Fullscreen API (element.requestFullscreen)
+- Fixed SportsPlayerModal fullscreen: inner video container had fixed `aspectRatio: "16/9"` preventing expansion
+  - When fullscreen: container gets `width: 100vw; height: 100vh` and inner div gets `width: 100%; height: 100%`
+  - Added floating fullscreen controls (Exit Fullscreen + Close buttons) visible only in fullscreen mode
+- Rewrote `/api/sports/streams/route.ts` to properly extract stream embed URLs:
+  - Added `scrapeWatchPageForEmbeds()` function that fetches Sportsurge watch pages
+  - Uses 6 extraction strategies: <a href> links, <iframe src>, data-* attributes, JSON in <script> tags, onClick handlers, and remaining URL patterns
+  - Filters URLs using known streaming provider domains and URL patterns
+  - Falls back to watch page URL if no embeds found
+  - Updated alternative servers to use different Sportsurge domains (.bz, .com.de, .net) and SportHD
+- Added Sportsurge page detection in sports-player-modal.tsx:
+  - `isSportsurgePage` flag detects when a Sportsurge/ SportHD page URL is loaded
+  - Shows amber overlay banner: "Click on a stream link inside the page to watch"
+  - Includes "Open" button (opens in new tab) and "Next Server" button (try another stream)
+- Verified clean lint pass
+
+Stage Summary:
+- Fullscreen now works properly on sports player — video fills entire screen without aspect ratio constraint
+- Sports streams API now scrapes Sportsurge watch pages for actual stream embed URLs instead of returning website pages
+- When direct embeds are found, they load directly in the player (much better UX)
+- When only Sportsurge pages are available, helpful overlay guides user to click stream links or try next server

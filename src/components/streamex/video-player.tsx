@@ -10,6 +10,8 @@ import {
   Loader2,
   Minimize2,
   MonitorUp,
+  Maximize,
+  Minimize,
   RefreshCw,
   Subtitles,
   Zap,
@@ -48,8 +50,10 @@ export function VideoPlayer({ item, onClose, onMiniPlayer, initialServerIndex = 
   const [triedServers, setTriedServers] = useState<Set<number>>(new Set());
   const [fallbackInProgress, setFallbackInProgress] = useState(false);
   const [isPipActive, setIsPipActive] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const isPipSupported = typeof window !== 'undefined' && 'documentPictureInPicture' in window;
   const loadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
   const historyTrackedRef = useRef<string>("");
   const pipWindowRef = useRef<Window | null>(null);
 
@@ -240,6 +244,25 @@ export function VideoPlayer({ item, onClose, onMiniPlayer, initialServerIndex = 
     }
   }, [isPipActive, embedUrl, item.title]);
 
+  // Fullscreen toggle
+  const toggleFullscreen = useCallback(() => {
+    const container = playerContainerRef.current;
+    if (!container) return;
+
+    if (!document.fullscreenElement) {
+      container.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  }, []);
+
+  // Listen for fullscreen changes (e.g. user presses Escape)
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+
   // Clean up PiP window on unmount
   useEffect(() => {
     return () => {
@@ -286,6 +309,18 @@ export function VideoPlayer({ item, onClose, onMiniPlayer, initialServerIndex = 
             <span className="hidden sm:inline">{isPipActive ? 'PiP On' : 'PiP'}</span>
           </button>
         )}
+        <button
+          onClick={toggleFullscreen}
+          className={`flex items-center gap-1.5 text-sm transition-colors cursor-pointer ${
+            isFullscreen
+              ? 'text-streamex-accent'
+              : 'text-streamex-text-secondary hover:text-white'
+          }`}
+          title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+        >
+          {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+          <span className="hidden sm:inline">{isFullscreen ? 'Exit' : 'Fullscreen'}</span>
+        </button>
         {onMiniPlayer && (
           <button
             onClick={() => onMiniPlayer(activeServerIndex, season, episode)}
@@ -312,7 +347,7 @@ export function VideoPlayer({ item, onClose, onMiniPlayer, initialServerIndex = 
       </div>
 
       {/* Player area */}
-      <div className="relative flex-1 bg-black min-h-0">
+      <div ref={playerContainerRef} className="relative flex-1 bg-black min-h-0">
         {/* Loading overlay */}
         <AnimatePresence>
           {playerState === "loading" && (
