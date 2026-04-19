@@ -704,10 +704,9 @@ export function SportsPlayerModal({ match, onClose }: SportsPlayerModalProps) {
                         key={`iframe-${match.id}-${activeServer}-${activeCustomUrl || ""}`}
                         src={currentUrl}
                         className="absolute inset-0 w-full h-full border-0"
-                        allow="autoplay; fullscreen; encrypted-media; clipboard-write"
+                        allow="autoplay; fullscreen; encrypted-media; clipboard-write; cross-origin-isolated"
                         allowFullScreen
-                        referrerPolicy="no-referrer"
-                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
+                        referrerPolicy="no-referrer-when-downgrade"
                         onLoad={handleIframeLoad}
                         title={`${match.team1} vs ${match.team2} — Live Stream`}
                       />
